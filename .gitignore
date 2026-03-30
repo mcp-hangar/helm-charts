@@ -1,0 +1,23 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Helm packaging output
+*.tgz
+
+# AI assistant local settings
+.claude/
+**/.claude/
+.opencode/
+**/.opencode/
+
+# Planning docs (local only)
+.planning
+**/.planning
+

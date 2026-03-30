@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-hangar-operator.fullname" . }}
+  labels:
+    {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mcp-hangar-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: operator
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "mcp-hangar-operator.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mcp-hangar-operator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      containers:
+        - name: operator
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --leader-elect={{ .Values.operator.leaderElection.enabled }}
+            - --metrics-bind-address=:{{ .Values.operator.metrics.port }}
+            - --health-probe-bind-address=:{{ .Values.operator.health.port }}
+            - --log-level={{ .Values.operator.logLevel }}
+            {{- if .Values.operator.leaderElection.enabled }}
+            {{- with .Values.operator.leaderElection.leaseDuration }}
+            - --lease-duration={{ . }}
+            {{- end }}
+            {{- with .Values.operator.leaderElection.renewDeadline }}
+            - --renew-deadline={{ . }}
+            {{- end }}
+            {{- with .Values.operator.leaderElection.retryPeriod }}
+            - --retry-period={{ . }}
+            {{- end }}
+            {{- with .Values.operator.leaderElection.namespace }}
+            - --leader-election-namespace={{ . }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.operator.gracefulShutdown.timeout }}
+            - --graceful-shutdown-timeout={{ . }}
+            {{- end }}
+            {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
+            - --enable-webhooks=true
+            - --webhook-port={{ .Values.webhook.port }}
+            {{- end }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if .Values.hangar.url }}
+            - name: HANGAR_URL
+              value: {{ .Values.hangar.url | quote }}
+            {{- end }}
+            {{- if or .Values.hangar.apiKey .Values.hangar.existingSecret }}
+            - name: HANGAR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mcp-hangar-operator.credentialsSecretName" . }}
+                  key: {{ .Values.hangar.secretKey }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.operator.metrics.port }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.operator.health.port }}
+              protocol: TCP
+            {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
+            - name: webhook
+              containerPort: {{ .Values.webhook.port }}
+              protocol: TCP
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
+            - name: webhook-certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
+        - name: webhook-certs
+          secret:
+            secretName: {{ include "mcp-hangar-operator.fullname" . }}-webhook-certs
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.operator.gracefulShutdown.terminationGracePeriodSeconds }}

@@ -1,0 +1,122 @@
+# MCP-Hangar Server Configuration
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mcp-hangar/mcp-hangar
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mcp-hangar.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - mcp-hangar
+          topologyKey: kubernetes.io/hostname
+
+# MCP-Hangar specific configuration
+config:
+  mode: http
+  port: 8080
+  logLevel: INFO
+  jsonLogs: true
+
+# Providers configuration
+providers: {}
+  # example:
+  #   mode: subprocess
+  #   command: ["python", "-m", "example_provider"]
+
+# Prometheus ServiceMonitor
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+# ConfigMap for hangar config.yaml
+configMap:
+  create: true
+
+# ── Network Policy ─────────────────────────────────────────────────────
+
+networkPolicy:
+  enabled: true
+  # Allow ingress from monitoring namespace
+  allowMonitoring: true
+  # Additional ingress rules
+  additionalIngress: []
+  # Additional egress rules
+  additionalEgress: []
+
+# ── Pod Disruption Budget ──────────────────────────────────────────────
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

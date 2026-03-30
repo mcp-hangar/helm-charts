@@ -1,0 +1,12 @@
+apiVersion: v2
+name: hangar-agent
+description: Hangar Agent — deployed in customer K8s clusters, connects to Hangar Cloud via gRPC
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - mcp
+  - hangar
+  - agent
+home: https://mcp-hangar.io
+

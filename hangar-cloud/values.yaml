@@ -1,0 +1,234 @@
+# Default values for hangar-cloud
+# Override these in your values file or with --set
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/mcp-hangar/hangar-cloud
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to .Chart.AppVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]
+
+# ── Services ───────────────────────────────────────────────────────────
+
+services:
+  rest:
+    type: ClusterIP
+    port: 8080
+  grpc:
+    type: ClusterIP
+    port: 9090
+
+# ── Ingress ────────────────────────────────────────────────────────────
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: cloud.mcp-hangar.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hangar-cloud-tls
+      hosts:
+        - cloud.mcp-hangar.io
+
+# ── Application config ─────────────────────────────────────────────────
+
+config:
+  enableGrpc: true
+  enableRest: true
+  enableBilling: false
+  grpcAddr: ":9090"
+  restAddr: ":8080"
+  database:
+    migrationsPath: "migrations"
+  auth:
+    jwtSecret: ""  # Override with a real secret or use existingSecret
+  stripe:
+    apiKey: ""
+
+# Use an existing secret instead of creating one
+existingSecret: ""
+
+# ── Environment variables ──────────────────────────────────────────────
+
+env: []
+# - name: HANGAR_DATABASE_URL
+#   valueFrom:
+#     secretKeyRef:
+#       name: hangar-cloud-secrets
+#       key: database-url
+
+# ── Resources ──────────────────────────────────────────────────────────
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+# ── Autoscaling ────────────────────────────────────────────────────────
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# ── Probes ─────────────────────────────────────────────────────────────
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+# ── Node placement ─────────────────────────────────────────────────────
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - hangar-cloud
+          topologyKey: kubernetes.io/hostname
+
+# ── Database migration ─────────────────────────────────────────────────
+
+migration:
+  # Run database migrations as a pre-install/pre-upgrade Job
+  enabled: true
+  # Command to run migrations (entrypoint of the same image)
+  command: ["/hangar-cloud", "migrate"]
+  # Job backoff limit
+  backoffLimit: 3
+  # TTL after job finishes (seconds, 0 = never delete)
+  ttlSecondsAfterFinished: 300
+  # Additional annotations for the migration Job
+  annotations: {}
+
+# ── PostgreSQL (sub-chart) ─────────────────────────────────────────────
+
+postgresql:
+  enabled: true
+  auth:
+    database: hangar_cloud
+    username: hangar
+    password: ""  # auto-generated if empty
+  primary:
+    persistence:
+      size: 10Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+
+# External database (used when postgresql.enabled=false)
+externalDatabase:
+  # Full connection URL (alternative to host/port/user/database)
+  url: ""
+  # Individual connection parameters (used if url is empty)
+  host: ""
+  port: 5432
+  username: ""
+  database: "hangar_cloud"
+  # SSL mode: disable, require, verify-ca, verify-full
+  sslmode: "require"
+  # Existing secret containing the database password
+  existingSecret: ""
+  # Key in the secret containing the password
+  secretKey: "password"
+
+# ── Redis (sub-chart) ──────────────────────────────────────────────────
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 2Gi
+    resources:
+      requests:
+        memory: 64Mi
+        cpu: 50m
+
+# ── Network Policy ─────────────────────────────────────────────────────
+
+networkPolicy:
+  enabled: true
+  # Allow ingress from monitoring namespace for Prometheus scraping
+  allowMonitoring: true
+  # Additional ingress rules
+  additionalIngress: []
+  # Additional egress rules
+  additionalEgress: []
+
+# ── Pod Disruption Budget ──────────────────────────────────────────────
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# External Redis (used when redis.enabled=false)
+externalRedis:
+  # Redis address (host:port)
+  addr: ""
+  # Redis database index
+  db: 0
+  # Existing secret containing the Redis password
+  existingSecret: ""
+  # Key in the secret containing the password
+  secretKey: "redis-password"
+

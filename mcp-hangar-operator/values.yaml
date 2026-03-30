@@ -1,0 +1,283 @@
+# MCP-Hangar Operator Configuration
+# ===================================
+
+# Replica count for operator deployment (2 for HA with leader election)
+replicaCount: 2
+
+# Operator image configuration
+image:
+  repository: ghcr.io/mcp-hangar/mcp-hangar-operator
+  pullPolicy: IfNotPresent
+  # Overrides the image tag (defaults to chart appVersion)
+  tag: ""
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Override chart name
+nameOverride: ""
+fullnameOverride: ""
+
+# ServiceAccount configuration
+serviceAccount:
+  # Create a service account
+  create: true
+  # Annotations for the service account
+  annotations: {}
+  # Name override (generated if empty)
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65534
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# =============================================================================
+# Operator Configuration
+# =============================================================================
+operator:
+  # Log level (debug, info, warn, error)
+  logLevel: info
+
+  # Metrics configuration
+  metrics:
+    # Enable metrics endpoint
+    enabled: true
+    # Metrics bind port
+    port: 8080
+
+  # Health probe configuration
+  health:
+    # Health probe bind port
+    port: 8081
+
+  # Leader election for HA
+  leaderElection:
+    # Enable leader election
+    enabled: true
+    # Namespace for leader election lease (defaults to release namespace)
+    namespace: ""
+    # Duration that non-leader candidates will wait after observing a
+    # leadership renewal before attempting to acquire the lease
+    leaseDuration: "15s"
+    # Interval between attempts by the acting leader to renew the lease
+    renewDeadline: "10s"
+    # Duration between leader election retries
+    retryPeriod: "2s"
+
+  # Graceful shutdown settings
+  gracefulShutdown:
+    # Maximum duration the manager waits for running reconcilers on shutdown.
+    # Must be less than terminationGracePeriodSeconds.
+    timeout: "10s"
+    # terminationGracePeriodSeconds for the pod. Must be greater than
+    # gracefulShutdown.timeout to allow the manager to drain work before
+    # the kubelet force-kills the process.
+    terminationGracePeriodSeconds: 15
+
+  # Reconciliation settings
+  reconcile:
+    # Requeue interval for ready providers
+    readyRequeueInterval: "5m"
+    # Requeue interval for errored providers
+    errorRequeueInterval: "10s"
+    # Maximum concurrent reconciles per controller
+    maxConcurrentReconciles: 10
+
+# =============================================================================
+# MCP-Hangar Core Connection
+# =============================================================================
+hangar:
+  # URL of MCP-Hangar core service
+  # Set to empty to run without Hangar core integration
+  url: ""
+  # Example: "http://mcp-hangar.mcp-system.svc.cluster.local:8080"
+
+  # API key for authentication
+  apiKey: ""
+
+  # Reference existing secret for API key
+  existingSecret: ""
+  # Key in the secret containing the API key
+  secretKey: "api-key"
+
+# =============================================================================
+# Resource Limits
+# =============================================================================
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# =============================================================================
+# Scheduling
+# =============================================================================
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - mcp-hangar-operator
+          topologyKey: kubernetes.io/hostname
+
+# Priority class
+priorityClassName: ""
+
+# Topology spread constraints
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: mcp-hangar-operator
+
+# =============================================================================
+# Admission Webhooks
+# =============================================================================
+webhook:
+  # Enable validating admission webhooks
+  enabled: false
+  # Webhook service port
+  port: 9443
+  # cert-manager integration for webhook TLS
+  certManager:
+    # Use cert-manager to provision webhook certificates
+    enabled: true
+    # Issuer kind (Issuer or ClusterIssuer)
+    issuerKind: Issuer
+    # Issuer name (auto-created self-signed issuer if empty)
+    issuerName: ""
+    # Certificate duration
+    duration: "8760h"  # 1 year
+    # Certificate renewal window
+    renewBefore: "720h"  # 30 days
+  # Failure policy for webhook (Fail or Ignore)
+  failurePolicy: Fail
+  # Timeout in seconds for webhook calls
+  timeoutSeconds: 10
+
+# =============================================================================
+# CRD Management
+# =============================================================================
+crds:
+  # Install CRDs
+  install: true
+  # Keep CRDs on helm uninstall
+  keep: true
+  # CRD conversion webhook for v1alpha1 <-> v1alpha2 conversion.
+  # When enabled, the operator serves a /convert endpoint and the CRD
+  # spec.conversion stanza is set to Webhook strategy. Requires
+  # webhook.certManager.enabled=true (or manual TLS provisioning) and
+  # Helm --skip-crds so that CRDs are installed via templates/crds/
+  # instead of the static crds/ directory.
+  conversion:
+    enabled: false
+
+# =============================================================================
+# RBAC Configuration
+# =============================================================================
+rbac:
+  # Create RBAC resources
+  create: true
+  # Additional rules for ClusterRole
+  additionalRules: []
+  # Example:
+  # - apiGroups: [""]
+  #   resources: ["persistentvolumeclaims"]
+  #   verbs: ["get", "list", "watch"]
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+
+# ServiceMonitor for Prometheus Operator
+serviceMonitor:
+  # Enable ServiceMonitor
+  enabled: false
+  # Namespace (defaults to release namespace)
+  namespace: ""
+  # Scrape interval
+  interval: 30s
+  # Scrape timeout
+  scrapeTimeout: 10s
+  # Additional labels
+  labels: {}
+  # Metric relabeling
+  metricRelabelings: []
+  # Target relabeling
+  relabelings: []
+
+# PrometheusRule for alerting
+prometheusRule:
+  # Enable PrometheusRule
+  enabled: false
+  # Namespace (defaults to release namespace)
+  namespace: ""
+  # Additional labels
+  labels: {}
+  # Alert rules
+  rules: []
+  # Example rules are generated if empty and enabled
+
+# =============================================================================
+# Network Policies
+# =============================================================================
+networkPolicy:
+  # Enable network policies
+  enabled: true
+  # Allow ingress from monitoring namespace
+  allowMonitoring: true
+  # Additional ingress rules
+  additionalIngress: []
+  # Additional egress rules
+  additionalEgress: []
+
+# =============================================================================
+# Pod Disruption Budget
+# =============================================================================
+podDisruptionBudget:
+  # Enable PDB
+  enabled: true
+  # Minimum available pods
+  minAvailable: 1
+  # Maximum unavailable pods (alternative to minAvailable)
+  # maxUnavailable: 1

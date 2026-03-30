@@ -1,0 +1,39 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mcp-hangar-operator.fullname" . }}
+  {{- if .Values.prometheusRule.namespace }}
+  namespace: {{ .Values.prometheusRule.namespace }}
+  {{- end }}
+  labels:
+    {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: {{ include "mcp-hangar-operator.fullname" . }}
+      {{- if .Values.prometheusRule.rules }}
+      rules:
+        {{- toYaml .Values.prometheusRule.rules | nindent 8 }}
+      {{- else }}
+      rules:
+        - alert: MCPOperatorReconcileErrors
+          expr: rate(controller_runtime_reconcile_errors_total{controller=~"mcpprovider|mcpprovidergroup|mcpdiscoverysource"}[5m]) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "MCP Operator reconcile errors detected"
+            description: "Controller {{ "{{" }} $labels.controller {{ "}}" }} has reconcile errors (current value: {{ "{{" }} $value {{ "}}" }})"
+        - alert: MCPOperatorDown
+          expr: up{job="{{ include "mcp-hangar-operator.fullname" . }}"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "MCP Operator is down"
+            description: "MCP Operator has been unreachable for 5 minutes"
+      {{- end }}
+{{- end }}

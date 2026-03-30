@@ -1,0 +1,136 @@
+replicaCount: 1  # One agent per cluster
+
+image:
+  repository: ghcr.io/mcp-hangar/hangar-agent
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  automountServiceAccountToken: false
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]
+
+# ── Agent connection ───────────────────────────────────────────────────
+
+agent:
+  # Required: Hangar Cloud gRPC address
+  cloudAddr: "cloud.mcp-hangar.io:443"
+
+  # Required: License key for tenant authentication (set via --set or secret)
+  licenseKey: ""
+
+  # Agent identity
+  clusterName: ""  # defaults to cluster hostname if empty
+  agentVersion: "0.1.0"
+
+  # TLS
+  tlsEnabled: true
+  tlsCaCert: ""  # path to CA cert for mTLS
+
+  # TLS client certificate for mTLS (optional).
+  # Set tls.secretName to mount an existing K8s TLS secret with client cert/key.
+  # The secret should contain tls.crt and tls.key entries.
+  tls:
+    secretName: ""  # existing K8s TLS secret name (e.g. "hangar-agent-tls")
+    mountPath: "/etc/hangar-agent/tls"
+
+  # Tuning
+  heartbeatInterval: "30s"
+  eventBatchInterval: "5s"
+  metricSnapshotInterval: "60s"
+  reconnectBackoffMax: "5m"
+
+  # WAL directory (needs persistent storage in production)
+  walDir: "/data/wal"
+
+  # Local mcp-hangar connection (optional — if mcp-hangar runs alongside)
+  mcpHangarAddr: ""
+  mcpHangarBin: ""
+  mcpHangarConfig: ""
+
+# ── Persistence for WAL ────────────────────────────────────────────────
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+# ── Resources ──────────────────────────────────────────────────────────
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - hangar-agent
+          topologyKey: kubernetes.io/hostname
+
+# ── Network Policy ─────────────────────────────────────────────────────
+
+networkPolicy:
+  enabled: true
+  # Allow ingress from monitoring namespace
+  allowMonitoring: true
+  # Additional ingress rules
+  additionalIngress: []
+  # Additional egress rules
+  additionalEgress: []
+
+# ── Pod Disruption Budget ──────────────────────────────────────────────
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# ── Probes ─────────────────────────────────────────────────────────────
+
+livenessProbe:
+  exec:
+    command: ["/bin/sh", "-c", "test -f /tmp/agent.pid"]
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  exec:
+    command: ["/bin/sh", "-c", "test -f /tmp/agent.ready"]
+  initialDelaySeconds: 5
+  periodSeconds: 10
+

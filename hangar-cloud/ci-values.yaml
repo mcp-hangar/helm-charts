@@ -1,0 +1,75 @@
+# Production-like values for CI dry-run testing.
+# This file is used in CI to validate template rendering with realistic
+# configuration. It is NOT intended for actual deployment.
+
+replicaCount: 3
+
+config:
+  enableGrpc: true
+  enableRest: true
+  enableBilling: false
+  auth:
+    jwtSecret: "override-in-production-via-existing-secret"
+
+existingSecret: ""
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: cloud.mcp-hangar.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: hangar-cloud-tls
+      hosts:
+        - cloud.mcp-hangar.io
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+migration:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 2000m
+    memory: 1Gi
+
+networkPolicy:
+  enabled: true
+  allowMonitoring: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Bundled sub-charts (for dev/staging)
+postgresql:
+  enabled: true
+  auth:
+    database: hangar_cloud
+    username: hangar
+    password: "override-in-production"
+  primary:
+    persistence:
+      size: 50Gi
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 5Gi

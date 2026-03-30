@@ -1,0 +1,52 @@
+# Production-like values for CI dry-run testing.
+# This file is used in CI to validate template rendering with realistic
+# configuration. It is NOT intended for actual deployment.
+
+replicaCount: 2
+
+operator:
+  logLevel: info
+  leaderElection:
+    enabled: true
+    leaseDuration: "15s"
+    renewDeadline: "10s"
+    retryPeriod: "2s"
+  gracefulShutdown:
+    timeout: "10s"
+    terminationGracePeriodSeconds: 15
+  reconcile:
+    maxConcurrentReconciles: 10
+
+webhook:
+  enabled: true
+  certManager:
+    enabled: true
+    issuerKind: ClusterIssuer
+    issuerName: "letsencrypt-prod"
+  failurePolicy: Fail
+
+hangar:
+  url: "http://mcp-hangar.hangar-system.svc.cluster.local:8080"
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+prometheusRule:
+  enabled: true
+
+networkPolicy:
+  enabled: true
+  allowMonitoring: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

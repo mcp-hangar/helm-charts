@@ -1,0 +1,38 @@
+Hangar Cloud has been deployed.
+
+{{- if .Values.migration.enabled }}
+
+Database migrations will run automatically via a post-install/post-upgrade Job.
+Check migration status:
+  kubectl get jobs -l app.kubernetes.io/component=migration -n {{ .Release.Namespace }}
+{{- end }}
+
+REST API:
+  kubectl port-forward svc/{{ include "hangar-cloud.fullname" . }}-rest {{ .Values.services.rest.port }}:{{ .Values.services.rest.port }} -n {{ .Release.Namespace }}
+  curl http://localhost:{{ .Values.services.rest.port }}/healthz
+
+gRPC API:
+  kubectl port-forward svc/{{ include "hangar-cloud.fullname" . }}-grpc {{ .Values.services.grpc.port }}:{{ .Values.services.grpc.port }} -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress is enabled. Access the REST API at:
+{{- range .Values.ingress.hosts }}
+  https://{{ .host }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.postgresql.enabled }}
+
+PostgreSQL (sub-chart) is deployed. Connection:
+  Host: {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local
+  Port: 5432
+  Database: {{ .Values.postgresql.auth.database }}
+  Username: {{ .Values.postgresql.auth.username }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+
+Redis (sub-chart) is deployed. Connection:
+  Address: {{ .Release.Name }}-redis-master.{{ .Release.Namespace }}.svc.cluster.local:6379
+{{- end }}
