@@ -42,6 +42,9 @@ spec:
             - name: grpc
               containerPort: 9090
               protocol: TCP
+            - name: metrics
+              containerPort: 9091
+              protocol: TCP
           env:
             - name: HANGAR_ENABLE_GRPC
               value: {{ .Values.config.enableGrpc | quote }}
@@ -53,6 +56,16 @@ spec:
               value: {{ .Values.config.grpcAddr | quote }}
             - name: HANGAR_REST_ADDR
               value: {{ .Values.config.restAddr | quote }}
+            - name: HANGAR_METRICS_ADDR
+              value: {{ .Values.config.metricsAddr | quote }}
+            {{- if .Values.config.cors.allowedOrigins }}
+            - name: HANGAR_CORS_ALLOWED_ORIGINS
+              value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
+            {{- end }}
+            {{- if .Values.config.ws.allowedOrigins }}
+            - name: HANGAR_WS_ALLOWED_ORIGINS
+              value: {{ join "," .Values.config.ws.allowedOrigins | quote }}
+            {{- end }}
             - name: HANGAR_DATABASE_MIGRATIONS_PATH
               value: {{ .Values.config.database.migrationsPath | quote }}
             - name: POSTGRES_PASSWORD
@@ -76,6 +89,8 @@ spec:
                 secretKeyRef:
                   name: {{ if .Values.existingSecret }}{{ .Values.existingSecret }}{{ else }}{{ include "hangar-cloud.fullname" . }}-secrets{{ end }}
                   key: jwt-secret
+            - name: HANGAR_AUTH_SECURE_COOKIES
+              value: {{ .Values.config.auth.secureCookies | quote }}
             {{- if .Values.config.stripe.apiKey }}
             - name: HANGAR_STRIPE_API_KEY
               valueFrom:

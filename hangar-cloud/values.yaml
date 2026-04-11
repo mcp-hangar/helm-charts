@@ -46,6 +46,9 @@ services:
   grpc:
     type: ClusterIP
     port: 9090
+  metrics:
+    type: ClusterIP
+    port: 9091
 
 # ── Ingress ────────────────────────────────────────────────────────────
 
@@ -72,10 +75,16 @@ config:
   enableBilling: false
   grpcAddr: ":9090"
   restAddr: ":8080"
+  metricsAddr: ":9091"
   database:
     migrationsPath: "migrations"
   auth:
     jwtSecret: ""  # Override with a real secret or use existingSecret
+    secureCookies: true  # Must be true when TLS is terminated upstream (ingress)
+  cors:
+    allowedOrigins: []  # e.g. ["https://app.mcp-hangar.io"]
+  ws:
+    allowedOrigins: []  # e.g. ["https://app.mcp-hangar.io"]
   stripe:
     apiKey: ""
 
@@ -207,11 +216,9 @@ redis:
 
 networkPolicy:
   enabled: true
-  # Allow ingress from monitoring namespace for Prometheus scraping
   allowMonitoring: true
-  # Additional ingress rules
+  monitoringNamespace: "monitoring"
   additionalIngress: []
-  # Additional egress rules
   additionalEgress: []
 
 # ── Pod Disruption Budget ──────────────────────────────────────────────

@@ -13,33 +13,32 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow REST and gRPC traffic
     - ports:
         - port: {{ .Values.services.rest.port }}
           protocol: TCP
         - port: {{ .Values.services.grpc.port }}
           protocol: TCP
     {{- if .Values.networkPolicy.allowMonitoring }}
-    # Allow Prometheus scraping on metrics port
-    - ports:
-        - port: {{ .Values.services.grpc.port }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.monitoringNamespace | default "monitoring" }}
+      ports:
+        - port: {{ .Values.services.metrics.port }}
           protocol: TCP
     {{- end }}
     {{- with .Values.networkPolicy.additionalIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
-    # Allow DNS
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Allow PostgreSQL
     - ports:
         - port: 5432
           protocol: TCP
-    # Allow Redis
     - ports:
         - port: 6379
           protocol: TCP
