@@ -1,0 +1,47 @@
+# Publishes each chart to the GHCR OCI registry on push to main, skipping any
+# chart whose version is already published (idempotent). See ADR-007
+# (operator & Helm release topology, mcp-hangar/mcp-hangar#410).
+name: release-charts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp-hangar/**'
+      - 'mcp-hangar-operator/**'
+      - 'hangar-agent/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write   # push to GHCR OCI
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: [mcp-hangar, mcp-hangar-operator, hangar-agent]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Registry login
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Lint
+        run: helm lint "${{ matrix.chart }}"
+
+      - name: Package and push if the version is new
+        run: |
+          set -euo pipefail
+          name="${{ matrix.chart }}"
+          version="$(helm show chart "$name" | awk -F': *' '/^version:/{print $2; exit}')"
+          if helm pull "oci://ghcr.io/mcp-hangar/charts/${name}" --version "$version" -d /tmp/pull >/dev/null 2>&1; then
+            echo "::notice::${name} ${version} already published — skipping."
+            exit 0
+          fi
+          helm package "$name" -d /tmp/pkg
+          helm push "/tmp/pkg/${name}-${version}.tgz" oci://ghcr.io/mcp-hangar/charts
