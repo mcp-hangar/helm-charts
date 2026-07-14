@@ -1,6 +1,6 @@
 # Publishes each chart to the GHCR OCI registry on push to main, skipping any
-# chart whose version is already published (idempotent). See ADR-007
-# (operator & Helm release topology, mcp-hangar/mcp-hangar#410).
+# chart whose version is already published (idempotent). See ADR-009
+# (independent release topology, mcp-hangar/mcp-hangar#410).
 name: release-charts
 
 on:
