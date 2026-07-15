@@ -113,7 +113,7 @@ hangar:
   # URL of MCP-Hangar core service
   # Set to empty to run without Hangar core integration
   url: ""
-  # Example: "http://mcp-hangar.mcp-system.svc.cluster.local:8080"
+  # Example: "http://mcp-hangar.mcp-hangar.svc.cluster.local:8080"
 
   # API key for authentication
   apiKey: ""

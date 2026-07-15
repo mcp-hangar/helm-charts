@@ -24,22 +24,22 @@ Install the charts directly from the GHCR OCI registry.
 
 ```bash
 # Add namespace
-kubectl create namespace mcp-system
+kubectl create namespace mcp-hangar
 
 # Install core server
 helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
   --version 0.12.0 \
-  --namespace mcp-system
+  --namespace mcp-hangar
 
 # Install operator
 helm install mcp-hangar-operator oci://ghcr.io/mcp-hangar/charts/mcp-hangar-operator \
   --version 0.12.0 \
-  --namespace mcp-system
+  --namespace mcp-hangar
 
 # Install agent
 helm install hangar-agent oci://ghcr.io/mcp-hangar/charts/hangar-agent \
   --version 0.1.0 \
-  --namespace mcp-system
+  --namespace mcp-hangar
 ```
 
 ## Install from Source
@@ -48,9 +48,9 @@ helm install hangar-agent oci://ghcr.io/mcp-hangar/charts/hangar-agent \
 git clone https://github.com/mcp-hangar/helm-charts.git
 cd helm-charts
 
-helm install mcp-hangar ./mcp-hangar -n mcp-system
-helm install mcp-hangar-operator ./mcp-hangar-operator -n mcp-system
-helm install hangar-agent ./hangar-agent -n mcp-system
+helm install mcp-hangar ./mcp-hangar -n mcp-hangar
+helm install mcp-hangar-operator ./mcp-hangar-operator -n mcp-hangar
+helm install hangar-agent ./hangar-agent -n mcp-hangar
 ```
 
 ## Chart Overview
