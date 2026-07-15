@@ -23,8 +23,8 @@ helm template my-release mcp-hangar
 helm template my-release mcp-hangar-operator
 
 # Install (to cluster)
-helm install mcp-hangar ./mcp-hangar --namespace mcp-system --create-namespace
-helm install mcp-hangar-operator ./mcp-hangar-operator --namespace mcp-system --create-namespace
+helm install mcp-hangar ./mcp-hangar --namespace mcp-hangar --create-namespace
+helm install mcp-hangar-operator ./mcp-hangar-operator --namespace mcp-hangar --create-namespace
 
 # Package
 helm package mcp-hangar
