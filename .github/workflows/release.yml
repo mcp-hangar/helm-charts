@@ -15,6 +15,7 @@ on:
 permissions:
   contents: read
   packages: write   # push to GHCR OCI
+  id-token: write   # keyless cosign signing (OIDC)
 
 jobs:
   publish:
@@ -27,6 +28,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: azure/setup-helm@v4
+      - uses: sigstore/cosign-installer@v3
+      - uses: anchore/sbom-action/download-syft@v0
 
       - name: Registry login
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -34,7 +37,7 @@ jobs:
       - name: Lint
         run: helm lint "${{ matrix.chart }}"
 
-      - name: Package and push if the version is new
+      - name: Package, push, and sign if the version is new
         run: |
           set -euo pipefail
           name="${{ matrix.chart }}"
@@ -43,5 +46,14 @@ jobs:
             echo "::notice::${name} ${version} already published — skipping."
             exit 0
           fi
+          pkg="/tmp/pkg/${name}-${version}.tgz"
           helm package "$name" -d /tmp/pkg
-          helm push "/tmp/pkg/${name}-${version}.tgz" oci://ghcr.io/mcp-hangar/charts
+          push_out="$(helm push "$pkg" oci://ghcr.io/mcp-hangar/charts 2>&1)"
+          echo "$push_out"
+          digest="$(echo "$push_out" | awk '/[Dd]igest:/{print $NF}')"
+          ref="ghcr.io/mcp-hangar/charts/${name}@${digest}"
+          echo "::notice::signing ${ref}"
+          # Keyless cosign signature + CycloneDX SBOM attestation on the chart.
+          cosign sign --yes "$ref"
+          syft "$pkg" -o cyclonedx-json=/tmp/sbom-"${name}".json
+          cosign attest --yes --predicate /tmp/sbom-"${name}".json --type cyclonedx "$ref"
