@@ -31,29 +31,43 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
 
-      - name: Registry login
+      # helm registry login authenticates `helm push`; cosign reads the *docker*
+      # config, so it needs its own GHCR login or the signature push 401s.
+      - name: Registry login (helm)
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Lint
         run: helm lint "${{ matrix.chart }}"
 
-      - name: Package, push, and sign if the version is new
+      - name: Publish if the version is new
         run: |
           set -euo pipefail
           name="${{ matrix.chart }}"
           version="$(helm show chart "$name" | awk -F': *' '/^version:/{print $2; exit}')"
           if helm pull "oci://ghcr.io/mcp-hangar/charts/${name}" --version "$version" -d /tmp/pull >/dev/null 2>&1; then
-            echo "::notice::${name} ${version} already published — skipping."
-            exit 0
+            echo "::notice::${name} ${version} already published — skipping push."
+          else
+            helm package "$name" -d /tmp/pkg
+            helm push "/tmp/pkg/${name}-${version}.tgz" oci://ghcr.io/mcp-hangar/charts
           fi
-          pkg="/tmp/pkg/${name}-${version}.tgz"
-          helm package "$name" -d /tmp/pkg
-          push_out="$(helm push "$pkg" oci://ghcr.io/mcp-hangar/charts 2>&1)"
-          echo "$push_out"
-          digest="$(echo "$push_out" | awk '/[Dd]igest:/{print $NF}')"
-          ref="ghcr.io/mcp-hangar/charts/${name}@${digest}"
-          echo "::notice::signing ${ref}"
-          # Keyless cosign signature + CycloneDX SBOM attestation on the chart.
+
+      # Sign + attest the current version by tag (cosign resolves it to a digest).
+      # Runs whether the chart was just pushed or already published, so a version
+      # that was published unsigned gets signed on the next run.
+      - name: Sign and attest (keyless)
+        run: |
+          set -euo pipefail
+          name="${{ matrix.chart }}"
+          version="$(helm show chart "$name" | awk -F': *' '/^version:/{print $2; exit}')"
+          ref="ghcr.io/mcp-hangar/charts/${name}:${version}"
           cosign sign --yes "$ref"
-          syft "$pkg" -o cyclonedx-json=/tmp/sbom-"${name}".json
-          cosign attest --yes --predicate /tmp/sbom-"${name}".json --type cyclonedx "$ref"
+          rm -rf /tmp/sbom-src && mkdir -p /tmp/sbom-src
+          helm pull "oci://ghcr.io/mcp-hangar/charts/${name}" --version "$version" -d /tmp/sbom-src
+          syft "/tmp/sbom-src/${name}-${version}.tgz" -o cyclonedx-json="/tmp/sbom-${name}.json"
+          cosign attest --yes --predicate "/tmp/sbom-${name}.json" --type cyclonedx "$ref"
