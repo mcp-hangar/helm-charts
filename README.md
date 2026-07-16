@@ -9,13 +9,14 @@ This repository contains official Helm charts for MCP Hangar.
 
 ## Charts
 
-- **mcp-hangar** — Core MCP Hangar server (chart `0.13.2`, appVersion `1.5.0`)
-- **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management (chart `0.12.1`, appVersion `0.12.2`)
+- **mcp-hangar** — Core MCP Hangar server
+- **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management
 
-Versions above are the current published charts. See [RELEASE.md](RELEASE.md) for
-how charts are versioned and published, and the
-[compatibility matrix](https://github.com/mcp-hangar/docs/blob/main/operations/RELEASE_COMPATIBILITY.md)
-for supported combinations and verified digests.
+For current chart and appVersion numbers, see the
+[releases page](https://github.com/mcp-hangar/helm-charts/releases) and the
+[compatibility matrix](https://github.com/mcp-hangar/docs/blob/main/operations/RELEASE_COMPATIBILITY.md),
+which are the source of truth for supported combinations and verified digests.
+See [RELEASE.md](RELEASE.md) for how charts are versioned and published.
 
 ## Prerequisites
 
