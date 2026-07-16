@@ -1,0 +1,46 @@
+# Manages chart versions and release PRs. release-please computes the semver
+# bump for each chart from Conventional Commits touching that chart's directory,
+# bumps its Chart.yaml `version:`, and maintains a per-chart release PR. Merging
+# that PR tags the release; the push to main then triggers release-charts
+# (release.yml), whose fail-safe guard publishes the new, immutable version
+# exactly once. Chart authors do not bump versions by hand.
+#
+# Mirrors mcp-hangar/mcp-hangar's release-please setup (same GitHub App token
+# pattern) but with release-type "helm" across three components.
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    # Surface the secret as an env var: the `secrets` context is not available
+    # in a step-level `if:`, but `env` is, so this is how the app-token step
+    # conditions on whether the credential is configured.
+    env:
+      RELEASE_BOT_APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
+    steps:
+      # Mint a GitHub App token so the release PR triggers downstream CI.
+      # Only runs when the app credentials are configured; otherwise the step
+      # is skipped and release-please falls back to the built-in GITHUB_TOKEN
+      # below (its own default), so the release pipeline never hard-fails on a
+      # missing/rotated app secret.
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        if: ${{ env.RELEASE_BOT_APP_ID != '' }}
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
