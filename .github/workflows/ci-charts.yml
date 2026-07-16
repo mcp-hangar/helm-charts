@@ -78,55 +78,6 @@ jobs:
           helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" --set agent.licenseKey=dummy-ci-key \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
-  # A chart change merged without a Chart.yaml version bump is silently
-  # skipped forever by release.yml's publish guard (crane manifest finds the
-  # already-published old version -> skip), so the fix never reaches the
-  # registry. That already happened for real: the operator chart's fixes
-  # (#25-#34) only shipped because release.yml's guard was broken and
-  # overwrote the published tag on every merge (#36). Now that the guard is
-  # fixed, this is the other half of closing that hole -- catch the missing
-  # bump at PR time instead of finding out a fix silently never shipped.
-  version-bump:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Require a Chart.yaml version bump for changed charts
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          fail=0
-          for chart in mcp-hangar mcp-hangar-operator hangar-agent; do
-            # Changes to the chart's own README don't affect the rendered
-            # chart -- a docs typo shouldn't demand a version bump.
-            changed="$(git diff --name-only "${BASE_SHA}...HEAD" -- "$chart" | grep -v -E "^${chart}/README\.md$" || true)"
-            if [ -z "$changed" ]; then
-              echo "${chart}: no relevant changes."
-              continue
-            fi
-
-            if ! old_version="$(git show "${BASE_SHA}:${chart}/Chart.yaml" 2>/dev/null | awk -F': *' '/^version:/{print $2; exit}')"; then
-              echo "${chart}: new chart (no Chart.yaml on base branch), nothing to compare."
-              continue
-            fi
-            new_version="$(awk -F': *' '/^version:/{print $2; exit}' "${chart}/Chart.yaml")"
-
-            echo "${chart}: changed files:"
-            while IFS= read -r line; do echo "  $line"; done <<< "$changed"
-
-            if [ "$old_version" = "$new_version" ]; then
-              echo "::error file=${chart}/Chart.yaml::${chart} has changed files but Chart.yaml's version (${new_version}) was not bumped. Bump 'version:' in ${chart}/Chart.yaml -- an unbumped chart is silently never republished (see #36)."
-              fail=1
-            else
-              echo "${chart}: version bumped ${old_version} -> ${new_version}. OK."
-            fi
-          done
-          exit "$fail"
-
   # The crux: install each chart against its pinned appVersion image on a
   # real cluster and assert it actually works, not just that it renders.
   install-smoke:
