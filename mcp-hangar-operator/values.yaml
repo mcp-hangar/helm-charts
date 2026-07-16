@@ -200,17 +200,25 @@ webhook:
 # =============================================================================
 # CRD Management
 # =============================================================================
+# CRDs are delivered via templates/crds/ only (a single, release-owned path).
+# There is no separate top-level crds/ directory: shipping CRDs through both
+# Helm's native crds/ dir (unmanaged, always applied on `helm install`) and
+# templates/crds/ (release-owned, gated by crds.install) at the same time
+# causes a Helm ownership/duplicate conflict on install. Keeping only the
+# templates/crds/ path makes the CRDs upgradeable and lets `crds.install`
+# and `crds.keep` actually take effect.
 crds:
-  # Install CRDs
+  # Install CRDs (templates/crds/). Disable if CRDs are managed out-of-band
+  # (e.g. a separate cluster-admin step, or `helm install --skip-crds`).
   install: true
-  # Keep CRDs on helm uninstall
+  # Keep CRDs on helm uninstall by setting the helm.sh/resource-policy: keep
+  # annotation, so `helm uninstall` does not cascade-delete the CRDs (and
+  # with them every MCPServer/MCPServerGroup/MCPDiscoverySource resource).
   keep: true
   # CRD conversion webhook for v1alpha1 <-> v1alpha2 conversion.
   # When enabled, the operator serves a /convert endpoint and the CRD
   # spec.conversion stanza is set to Webhook strategy. Requires
-  # webhook.certManager.enabled=true (or manual TLS provisioning) and
-  # Helm --skip-crds so that CRDs are installed via templates/crds/
-  # instead of the static crds/ directory.
+  # webhook.certManager.enabled=true (or manual TLS provisioning).
   conversion:
     enabled: false
 
