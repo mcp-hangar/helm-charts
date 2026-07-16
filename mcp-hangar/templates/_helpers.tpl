@@ -49,6 +49,22 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Labels for the helm-test connection hook pod. Deliberately omit
+app.kubernetes.io/name (part of mcp-hangar.selectorLabels) so this pod does
+NOT match the app NetworkPolicy's podSelector and inherit its restrictive
+egress rules; the test pod needs to reach the gateway Service unrestricted.
+*/}}
+{{- define "mcp-hangar.testLabels" -}}
+helm.sh/chart: {{ include "mcp-hangar.chart" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: test-connection
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "mcp-hangar.serviceAccountName" -}}

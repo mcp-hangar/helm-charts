@@ -41,6 +41,22 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+    {{- if .Values.networkPolicy.allowSameNamespaceEgress }}
+    # Allow egress to any pod in the release namespace on any port. Covers
+    # co-located MCP backends and the helm-test connection hook pod talking
+    # back to the gateway.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.networkPolicy.allowHTTPSEgress }}
+    # Allow HTTPS egress to anywhere. Needed for OIDC issuer/JWKS discovery and
+    # for remote MCP backends reachable over HTTPS outside the release namespace.
+    - ports:
+        - port: 443
+          protocol: TCP
+    {{- end }}
     {{- with .Values.networkPolicy.additionalEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
