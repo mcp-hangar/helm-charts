@@ -96,10 +96,6 @@ Operator chart for deploying the Kubernetes operator.
 mcp-hangar-operator/
 ├── Chart.yaml
 ├── values.yaml
-├── crds/                # CRD manifests (installed before templates)
-│   ├── mcpproviders.yaml
-│   ├── mcpprovidergroups.yaml
-│   └── mcpdiscoverysources.yaml
 └── templates/
     ├── _helpers.tpl
     ├── NOTES.txt
@@ -110,16 +106,24 @@ mcp-hangar-operator/
     ├── clusterrolebinding.yaml
     ├── secret.yaml            # Optional secrets
     ├── servicemonitor.yaml    # Prometheus ServiceMonitor
-    ├── crds/                  # CRD templates (if conditional install needed)
+    ├── crds/                  # CRD templates, gated by values.crds.install
     └── tests/
 ```
 
 ### CRDs
 
-CRD manifests live in `crds/` directory and are installed automatically by Helm before any templates. When operator CRD types change:
+CRD manifests live only in `templates/crds/` (release-owned, gated by
+`values.crds.install`). There is no top-level `crds/` directory -- shipping
+CRDs through both Helm's native `crds/` dir and `templates/crds/`
+simultaneously causes a Helm ownership conflict on `helm install`. Each
+templated CRD carries `helm.sh/resource-policy: keep` (toggled by
+`values.crds.keep`) so `helm uninstall` does not cascade-delete CRDs and the
+custom resources under them. When operator CRD types change:
 
 1. Regenerate in the `operator` repo: `make manifests`
-2. Copy from `operator/config/crd/bases/` to `mcp-hangar-operator/crds/`
+2. Copy from `operator/config/crd/bases/` into `mcp-hangar-operator/templates/crds/`,
+   wrapping each with the `{{- if .Values.crds.install }}` guard and the
+   `helm.sh/resource-policy: keep` annotation used by the existing files
 3. Verify with `helm lint mcp-hangar-operator`
 
 ## Conventions
@@ -168,7 +172,7 @@ Update `NOTES.txt` when adding new features. It should contain:
 
 - No hardcoded image tags -- use `values.yaml` and `.Chart.AppVersion`
 - No hardcoded namespaces in templates -- use `{{ .Release.Namespace }}`
-- No `helm.sh/hook` unless truly needed (CRDs use `crds/` directory instead)
+- No `helm.sh/hook` unless truly needed (operator CRDs use `templates/crds/`, gated by `values.crds.install`, instead)
 - No secrets in `values.yaml` defaults -- use external secret management
 - No emoji in comments or NOTES.txt
 
