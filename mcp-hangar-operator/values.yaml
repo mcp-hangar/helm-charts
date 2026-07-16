@@ -17,6 +17,16 @@
 # signal, or accepts that standby replicas report NotReady by design).
 replicaCount: 1
 
+# Deployment update strategy. The same leader-gated readiness above also
+# breaks a RollingUpdate: it surges a new Pod that cannot become Ready until
+# the old leader releases its lease, but the old Pod is not terminated until
+# the new one is Ready -- so the rollout deadlocks and `helm upgrade --wait`
+# times out. `Recreate` terminates the old Pod first (releasing the lease),
+# then starts the new one, which then acquires leadership and becomes Ready.
+# Override to RollingUpdate only for HA (replicaCount >= 2) where you have
+# accounted for the leader-gating interaction.
+updateStrategy: Recreate
+
 # Operator image configuration
 image:
   repository: ghcr.io/mcp-hangar/mcp-hangar-operator
