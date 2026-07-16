@@ -117,9 +117,12 @@ configMap:
 
 networkPolicy:
   enabled: true
-  # Allow ingress from monitoring namespace
+  # Allow ingress from the monitoring namespace (Prometheus scraping) on the service port
   allowMonitoring: true
-  # Additional ingress rules
+  # Namespace label (kubernetes.io/metadata.name) that Prometheus/monitoring runs in.
+  # Only used when allowMonitoring is true.
+  monitoringNamespace: monitoring
+  # Additional ingress rules (appended as-is; use to allow other namespaces/peers)
   additionalIngress: []
   # Additional egress rules
   additionalEgress: []
