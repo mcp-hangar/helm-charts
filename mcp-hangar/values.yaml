@@ -85,12 +85,22 @@ config:
   port: 8080
   logLevel: INFO
   jsonLogs: true
+  # The 1.5 server refuses to bind HTTP on a non-loopback interface unless
+  # either an `auth` block is configured below or this is set to true.
+  # Leave this false and configure `auth` for any non-demo deployment.
+  unsafeNoAuth: false
 
-# Providers configuration
-providers: {}
+# MCP servers configuration
+mcp_servers: {}
   # example:
-  #   mode: subprocess
-  #   command: ["python", "-m", "example_provider"]
+  #   math:
+  #     mode: subprocess
+  #     command: ["python", "-m", "example_provider"]
+
+# Auth configuration, rendered into config.yaml's top-level `auth:` section.
+# Required for the server to bind HTTP on a non-loopback interface unless
+# config.unsafeNoAuth is set to true (demo/insecure only).
+auth: {}
 
 # Prometheus ServiceMonitor
 serviceMonitor:
@@ -107,9 +117,12 @@ configMap:
 
 networkPolicy:
   enabled: true
-  # Allow ingress from monitoring namespace
+  # Allow ingress from the monitoring namespace (Prometheus scraping) on the service port
   allowMonitoring: true
-  # Additional ingress rules
+  # Namespace label (kubernetes.io/metadata.name) that Prometheus/monitoring runs in.
+  # Only used when allowMonitoring is true.
+  monitoringNamespace: monitoring
+  # Additional ingress rules (appended as-is; use to allow other namespaces/peers)
   additionalIngress: []
   # Additional egress rules
   additionalEgress: []
