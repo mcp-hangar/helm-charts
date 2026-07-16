@@ -1,5 +1,10 @@
 MCP Hangar has been installed.
 
+NOTE: the 1.5 server refuses to bind HTTP on a non-loopback interface unless
+EITHER a configured `auth:` block (see values.yaml `auth`) OR
+`config.unsafeNoAuth=true` (demo/insecure only) is set. With both left at
+their secure defaults, the pod will not become Ready.
+
 Get the application URL:
 
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "mcp-hangar.fullname" . }} 8080:{{ .Values.service.port }}
