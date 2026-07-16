@@ -21,15 +21,6 @@
       "bump-patch-for-minor-pre-major": true,
       "draft": false,
       "prerelease": false
-    },
-    "hangar-agent": {
-      "package-name": "hangar-agent",
-      "component": "hangar-agent",
-      "include-component-in-tag": true,
-      "bump-minor-pre-major": false,
-      "bump-patch-for-minor-pre-major": true,
-      "draft": false,
-      "prerelease": false
     }
   },
   "changelog-sections": [

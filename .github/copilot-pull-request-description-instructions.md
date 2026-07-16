@@ -15,7 +15,7 @@ The PR body MUST contain these five `##` sections, in this exact wording
 4. `## Risk and rollback` -- what could break and how to revert.
 5. `## CHANGELOG note` -- paste the entry the PR adds, or write
    `skip-changelog: <reason>` when the change does not touch a triggering
-   path (`mcp-hangar/`, `mcp-hangar-operator/`, `hangar-agent/`).
+   path (`mcp-hangar/`, `mcp-hangar-operator/`).
 
 Optionally append `## Agent metadata` for agent-authored PRs.
 

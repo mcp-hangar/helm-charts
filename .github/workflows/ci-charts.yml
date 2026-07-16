@@ -22,7 +22,6 @@ on:
     paths:
       - 'mcp-hangar/**'
       - 'mcp-hangar-operator/**'
-      - 'hangar-agent/**'
       - '.github/workflows/ci-charts.yml'
 
 concurrency:
@@ -59,7 +58,6 @@ jobs:
             run:
               - 'mcp-hangar/**'
               - 'mcp-hangar-operator/**'
-              - 'hangar-agent/**'
               - '.github/workflows/ci-charts.yml'
 
   # Fast: no cluster. Catches template/schema-level defects (bad YAML,
@@ -71,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chart: [mcp-hangar, mcp-hangar-operator, hangar-agent]
+        chart: [mcp-hangar, mcp-hangar-operator]
     steps:
       - uses: actions/checkout@v4
 
@@ -89,16 +87,14 @@ jobs:
       - name: helm template (default values) | kubeconform
         run: |
           set -euo pipefail
-          # hangar-agent has a `required` on agent.licenseKey; harmlessly
-          # ignored by the other two charts (unused value path).
-          helm template t "${{ matrix.chart }}" --set agent.licenseKey=dummy-ci-key \
+          helm template t "${{ matrix.chart }}" \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
       - name: helm template (ci-values.yaml) | kubeconform
         if: hashFiles(format('{0}/ci-values.yaml', matrix.chart)) != ''
         run: |
           set -euo pipefail
-          helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" --set agent.licenseKey=dummy-ci-key \
+          helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
   # The crux: install each chart against its pinned appVersion image on a
@@ -317,67 +313,11 @@ jobs:
           echo "---- operator logs ----"
           kubectl -n op logs -l app.kubernetes.io/name=mcp-hangar-operator --all-containers --tail=300 || true
 
-      # ── agent (hangar-agent) ─────────────────────────────────────────
-      # No --wait: the agent dials out to Hangar Cloud, which does not
-      # exist in CI, so the readinessProbe (test -f /tmp/agent.ready)
-      # never passes by design. We only assert it boots and stays up
-      # (Running, no CrashLoopBackOff) -- not that it becomes Ready.
-      - name: Install agent (hangar-agent)
-        id: install_agent
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-
-          echo "::group::helm install agent"
-          helm install a ./hangar-agent -n agent --create-namespace \
-            --set agent.licenseKey=dummy-ci-key
-          echo "::endgroup::"
-
-          echo "::group::pod boots and stays up (no CrashLoopBackOff) for ~90s"
-          selector='app.kubernetes.io/name=hangar-agent,app.kubernetes.io/instance=a'
-          deadline=$((SECONDS + 90))
-          phase=""
-          ok=false
-          while [ "$SECONDS" -lt "$deadline" ]; do
-            phase="$(kubectl -n agent get pod -l "$selector" -o jsonpath='{.items[0].status.phase}' 2>/dev/null || true)"
-            waiting_reason="$(kubectl -n agent get pod -l "$selector" -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)"
-
-            if [ "$waiting_reason" = "CrashLoopBackOff" ]; then
-              echo "::error::hangar-agent pod is in CrashLoopBackOff"
-              ok=false
-              break
-            fi
-            if [ "$phase" = "Running" ]; then
-              ok=true
-            fi
-            sleep 5
-          done
-
-          kubectl -n agent get pods -o wide
-          if [ "$ok" != "true" ]; then
-            echo "::error::hangar-agent pod never reached (and stayed) Running within 90s (last phase: ${phase:-<none>})"
-            exit 1
-          fi
-          echo "hangar-agent pod is Running and not crash-looping (cloud connection retry is expected to fail in CI)"
-          echo "::endgroup::"
-
-      - name: Diagnostics (agent) on failure
-        if: steps.install_agent.outcome == 'failure'
-        run: |
-          echo "---- pods ----"
-          kubectl -n agent get pods -o wide || true
-          echo "---- describe pods ----"
-          kubectl -n agent describe pods || true
-          echo "---- events ----"
-          kubectl -n agent get events --sort-by=.lastTimestamp || true
-          echo "---- logs ----"
-          kubectl -n agent logs -l app.kubernetes.io/name=hangar-agent --all-containers --tail=300 || true
-
       - name: Gate on install-smoke results
         if: always()
         run: |
           status=0
-          for pair in "core:${{ steps.install_core.outcome }}" "operator:${{ steps.install_operator.outcome }}" "agent:${{ steps.install_agent.outcome }}"; do
+          for pair in "core:${{ steps.install_core.outcome }}" "operator:${{ steps.install_operator.outcome }}"; do
             name="${pair%%:*}"
             outcome="${pair##*:}"
             echo "${name}: ${outcome}"
