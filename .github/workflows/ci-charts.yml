@@ -10,12 +10,13 @@
 name: ci-charts
 
 on:
+  # Deliberately NOT path-filtered: this workflow is meant to be a required
+  # status check (see the `charts-required` job below), and a path-filtered
+  # required check deadlocks every PR that doesn't touch a matching path --
+  # GitHub blocks the merge waiting on a check run that GitHub itself never
+  # schedules. Every PR triggers the workflow; the `detect` job decides
+  # internally whether the heavy jobs need to actually do anything.
   pull_request:
-    paths:
-      - 'mcp-hangar/**'
-      - 'mcp-hangar-operator/**'
-      - 'hangar-agent/**'
-      - '.github/workflows/ci-charts.yml'
   push:
     branches: [main]
     paths:
@@ -41,9 +42,31 @@ env:
   KIND_NODE_IMAGE: kindest/node:v1.32.8@sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1
 
 jobs:
+  # Runs on every PR (see the un-filtered `on:` above) and decides whether
+  # the heavy jobs below need to do anything. A chart-touching PR gets the
+  # full run; a docs-only PR skips straight to a green `charts-required`.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.filter.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            run:
+              - 'mcp-hangar/**'
+              - 'mcp-hangar-operator/**'
+              - 'hangar-agent/**'
+              - '.github/workflows/ci-charts.yml'
+
   # Fast: no cluster. Catches template/schema-level defects (bad YAML,
   # invalid fields, wrong apiVersions) in seconds, per chart.
   lint-and-render:
+    needs: detect
+    if: needs.detect.outputs.run == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -81,7 +104,8 @@ jobs:
   # The crux: install each chart against its pinned appVersion image on a
   # real cluster and assert it actually works, not just that it renders.
   install-smoke:
-    needs: lint-and-render
+    needs: [detect, lint-and-render]
+    if: needs.detect.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -107,6 +131,34 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Re-port-forwards and polls /health/ready; called after install,
+          # upgrade and rollback so those three checks don't triplicate the
+          # same block.
+          wait_for_core_ready() {
+            local label="$1"
+            kubectl -n core port-forward svc/core-mcp-hangar 18080:8080 >/tmp/core-pf.log 2>&1 &
+            local pf_pid=$!
+
+            local code="" ready=false
+            for _ in $(seq 1 20); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/ready || true)
+              if [ "$code" = "200" ]; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+
+            kill "$pf_pid" 2>/dev/null || true
+
+            if [ "$ready" != "true" ]; then
+              echo "::error::GET /health/ready (${label}) did not return 200 (last code: ${code:-<none>})"
+              cat /tmp/core-pf.log || true
+              return 1
+            fi
+            echo "GET /health/ready (${label}) -> 200"
+          }
+
           echo "::group::helm install core"
           helm install core ./mcp-hangar -n core --create-namespace --wait --timeout 300s \
             --set config.unsafeNoAuth=true
@@ -120,33 +172,32 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::GET /health/ready"
-          kubectl -n core port-forward svc/core-mcp-hangar 18080:8080 >/tmp/core-pf.log 2>&1 &
-          pf_pid=$!
-          trap 'kill "$pf_pid" 2>/dev/null || true' EXIT
-
-          code=""
-          ready=false
-          for _ in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/ready || true)
-            if [ "$code" = "200" ]; then
-              ready=true
-              break
-            fi
-            sleep 1
-          done
-
-          if [ "$ready" != "true" ]; then
-            echo "::error::GET /health/ready did not return 200 (last code: ${code:-<none>})"
-            cat /tmp/core-pf.log || true
-            exit 1
-          fi
-          echo "GET /health/ready -> 200"
-          kill "$pf_pid" 2>/dev/null || true
-          trap - EXIT
+          wait_for_core_ready "initial install"
           echo "::endgroup::"
 
           echo "::group::helm test core"
           helm test core -n core --logs
+          echo "::endgroup::"
+
+          # Upgrade + rollback (#7): core has no leader-election, so
+          # bumping replicaCount is a real behavior change that --wait can
+          # safely gate on (contrast the operator below, where the same
+          # move would hang -- see #26).
+          echo "::group::helm upgrade core (replicaCount=2)"
+          helm upgrade core ./mcp-hangar -n core --reuse-values --wait --timeout 300s \
+            --set replicaCount=2
+          echo "::endgroup::"
+
+          echo "::group::GET /health/ready (post-upgrade)"
+          wait_for_core_ready "post-upgrade"
+          echo "::endgroup::"
+
+          echo "::group::helm rollback core to revision 1"
+          helm rollback core 1 -n core --wait --timeout 300s
+          echo "::endgroup::"
+
+          echo "::group::GET /health/ready (post-rollback)"
+          wait_for_core_ready "post-rollback"
           echo "::endgroup::"
 
       - name: Diagnostics (core) on failure
@@ -225,6 +276,29 @@ jobs:
             exit 1
           fi
           echo "child Pod $pod_name has ownerReference -> MCPServer/ci-smoke (reconcile confirmed)"
+          echo "::endgroup::"
+
+          # Upgrade + rollback (#7): deliberately NOT replicaCount>1. The
+          # operator's /readyz is leader-gated -- only the elected leader
+          # reports ready -- so `helm upgrade --wait` at 2 replicas waits
+          # for a standby to become Ready, which never happens, and hangs
+          # (issue #26). A benign podAnnotations change exercises the
+          # upgrade/rollback path itself without re-triggering that hang.
+          echo "::group::helm upgrade operator (benign podAnnotations change)"
+          helm upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
+            --set podAnnotations.ci-upgrade-test=1
+          echo "::endgroup::"
+
+          echo "::group::operator Deployment Available (post-upgrade)"
+          kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
+          echo "::endgroup::"
+
+          echo "::group::helm rollback operator to revision 1"
+          helm rollback op 1 -n op --wait --timeout 300s
+          echo "::endgroup::"
+
+          echo "::group::operator Deployment Available (post-rollback)"
+          kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
           echo "::endgroup::"
 
       - name: Diagnostics (operator) on failure
@@ -308,6 +382,30 @@ jobs:
             outcome="${pair##*:}"
             echo "${name}: ${outcome}"
             if [ "$outcome" != "success" ]; then
+              status=1
+            fi
+          done
+          exit "$status"
+
+  # The one job to mark as a required status check. It `needs` everything
+  # above and runs unconditionally (`if: always()`), so it always posts a
+  # result -- unlike lint-and-render/install-smoke, which skip on a
+  # non-chart PR and would otherwise leave a required check pending
+  # forever. It fails only if a needed job actually failed; a job that was
+  # itself skipped (the detect.run == 'false' path) is fine.
+  charts-required:
+    needs: [detect, lint-and-render, install-smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          status=0
+          for pair in "detect:${{ needs.detect.result }}" "lint-and-render:${{ needs.lint-and-render.result }}" "install-smoke:${{ needs.install-smoke.result }}"; do
+            name="${pair%%:*}"
+            result="${pair##*:}"
+            echo "${name}: ${result}"
+            if [ "$result" = "failure" ]; then
               status=1
             fi
           done
