@@ -1,25 +1,28 @@
+{{- if .Values.crds.install }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: mcpprovidergroups.mcp-hangar.io
+    {{- if and .Values.crds.conversion.enabled .Values.webhook.certManager.enabled }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "mcp-hangar-operator.fullname" . }}-webhook
+    {{- end }}
+  name: mcpservergroups.mcp-hangar.io
   labels:
-    app.kubernetes.io/name: mcp-hangar-operator
-    app.kubernetes.io/part-of: mcp-hangar
+    {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
 spec:
   group: mcp-hangar.io
   names:
     categories:
     - mcp
-    kind: MCPProviderGroup
-    listKind: MCPProviderGroupList
-    plural: mcpprovidergroups
+    kind: MCPServerGroup
+    listKind: MCPServerGroupList
+    plural: mcpservergroups
     shortNames:
     - mcppg
     - providergroup
-    singular: mcpprovidergroup
+    singular: mcpservergroup
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -41,7 +44,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: MCPProviderGroup is the Schema for the mcpprovidergroups API
+        description: MCPServerGroup is the Schema for the mcpservergroups API
         properties:
           apiVersion:
             description: |-
@@ -61,7 +64,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MCPProviderGroupSpec defines the desired state of MCPProviderGroup
+            description: MCPServerGroupSpec defines the desired state of MCPServerGroup
             properties:
               circuitBreaker:
                 description: CircuitBreaker configures group-level circuit breaker
@@ -132,7 +135,7 @@ spec:
                     type: integer
                 type: object
               selector:
-                description: Selector selects MCPProviders to include in the group
+                description: Selector selects MCPServers to include in the group
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -211,7 +214,7 @@ spec:
             - selector
             type: object
           status:
-            description: MCPProviderGroupStatus defines the observed state of MCPProviderGroup
+            description: MCPServerGroupStatus defines the observed state of MCPServerGroup
             properties:
               activeStrategy:
                 description: ActiveStrategy is the currently active strategy
@@ -274,7 +277,7 @@ spec:
               providers:
                 description: Providers contains provider member details
                 items:
-                  description: ProviderMemberStatus defines the status of a group
+                  description: MCPServerMemberStatus defines the status of a group
                     member
                   properties:
                     activeConnections:
@@ -332,7 +335,7 @@ spec:
     name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: MCPProviderGroup is the Schema for the mcpprovidergroups API
+        description: MCPServerGroup is the Schema for the mcpservergroups API
         properties:
           apiVersion:
             description: |-
@@ -352,7 +355,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MCPProviderGroupSpec defines the desired state of MCPProviderGroup
+            description: MCPServerGroupSpec defines the desired state of MCPServerGroup
             properties:
               circuitBreaker:
                 description: CircuitBreaker configures group-level circuit breaker
@@ -425,7 +428,7 @@ spec:
                     type: integer
                 type: object
               selector:
-                description: Selector selects MCPProviders to include in the group
+                description: Selector selects MCPServers to include in the group
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -505,7 +508,7 @@ spec:
             - selector
             type: object
           status:
-            description: MCPProviderGroupStatus defines the observed state of MCPProviderGroup
+            description: MCPServerGroupStatus defines the observed state of MCPServerGroup
             properties:
               activeStrategy:
                 description: ActiveStrategy is the currently active strategy
@@ -595,7 +598,7 @@ spec:
               providers:
                 description: Providers contains provider member details
                 items:
-                  description: ProviderMemberStatus defines the status of a group
+                  description: MCPServerMemberStatus defines the status of a group
                     member
                   properties:
                     activeConnections:
@@ -634,3 +637,19 @@ spec:
     storage: true
     subresources:
       status: {}
+  conversion:
+    {{- if .Values.crds.conversion.enabled }}
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+          namespace: {{ .Release.Namespace }}
+          path: /convert
+          port: 443
+      conversionReviewVersions:
+        - v1
+    {{- else }}
+    strategy: None
+    {{- end }}
+{{- end }}

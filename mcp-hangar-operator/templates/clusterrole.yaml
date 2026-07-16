@@ -12,8 +12,8 @@ rules:
   - apiGroups:
       - mcp-hangar.io
     resources:
-      - mcpproviders
-      - mcpprovidergroups
+      - mcpservers
+      - mcpservergroups
       - mcpdiscoverysources
     verbs:
       - create
@@ -27,8 +27,8 @@ rules:
   - apiGroups:
       - mcp-hangar.io
     resources:
-      - mcpproviders/status
-      - mcpprovidergroups/status
+      - mcpservers/status
+      - mcpservergroups/status
       - mcpdiscoverysources/status
     verbs:
       - get
@@ -38,8 +38,8 @@ rules:
   - apiGroups:
       - mcp-hangar.io
     resources:
-      - mcpproviders/finalizers
-      - mcpprovidergroups/finalizers
+      - mcpservers/finalizers
+      - mcpservergroups/finalizers
       - mcpdiscoverysources/finalizers
     verbs:
       - update

@@ -20,7 +20,7 @@ spec:
       {{- else }}
       rules:
         - alert: MCPOperatorReconcileErrors
-          expr: rate(controller_runtime_reconcile_errors_total{controller=~"mcpprovider|mcpprovidergroup|mcpdiscoverysource"}[5m]) > 0
+          expr: rate(controller_runtime_reconcile_errors_total{controller=~"mcpserver|mcpservergroup|mcpdiscoverysource"}[5m]) > 0
           for: 15m
           labels:
             severity: warning

@@ -2,8 +2,8 @@ MCP Hangar Operator has been installed.
 
 Check CRD status:
 
-  kubectl get mcpproviders
-  kubectl get mcpprovidergroups
+  kubectl get mcpservers
+  kubectl get mcpservergroups
   kubectl get mcpdiscoverysources
 
 View operator logs:
@@ -13,8 +13,8 @@ View operator logs:
 NOTE: CRDs are not removed when you run `helm uninstall`.
 To remove CRDs manually:
 
-  kubectl delete crd mcpproviders.mcp-hangar.io
-  kubectl delete crd mcpprovidergroups.mcp-hangar.io
+  kubectl delete crd mcpservers.mcp-hangar.io
+  kubectl delete crd mcpservergroups.mcp-hangar.io
   kubectl delete crd mcpdiscoverysources.mcp-hangar.io
 
 Documentation:
