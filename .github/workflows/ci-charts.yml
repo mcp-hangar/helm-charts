@@ -286,7 +286,7 @@ jobs:
           # upgrade/rollback path itself without re-triggering that hang.
           echo "::group::helm upgrade operator (benign podAnnotations change)"
           helm upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
-            --set podAnnotations.ci-upgrade-test=1
+            --set-string podAnnotations.ci-upgrade-test=1
           echo "::endgroup::"
 
           echo "::group::operator Deployment Available (post-upgrade)"
