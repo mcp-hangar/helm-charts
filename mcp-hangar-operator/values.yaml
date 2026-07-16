@@ -58,7 +58,9 @@ securityContext:
 # Operator Configuration
 # =============================================================================
 operator:
-  # Log level (debug, info, warn, error)
+  # Log level passed to the manager via --zap-log-level (controller-runtime's
+  # zap logging flag). Accepts: debug, info, error, or an integer verbosity
+  # level (e.g. "2"). Note: "warn" is NOT a supported value.
   logLevel: info
 
   # Metrics configuration

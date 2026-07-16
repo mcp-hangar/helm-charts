@@ -42,7 +42,7 @@ spec:
             - --leader-elect={{ .Values.operator.leaderElection.enabled }}
             - --metrics-bind-address=:{{ .Values.operator.metrics.port }}
             - --health-probe-bind-address=:{{ .Values.operator.health.port }}
-            - --log-level={{ .Values.operator.logLevel }}
+            - --zap-log-level={{ .Values.operator.logLevel }}
             {{- if .Values.operator.leaderElection.enabled }}
             {{- with .Values.operator.leaderElection.leaseDuration }}
             - --lease-duration={{ . }}

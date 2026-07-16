@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: mcpproviders.mcp-hangar.io
+  name: mcpservers.mcp-hangar.io
   labels:
     app.kubernetes.io/name: mcp-hangar-operator
     app.kubernetes.io/part-of: mcp-hangar
@@ -13,13 +13,13 @@ spec:
   names:
     categories:
     - mcp
-    kind: MCPProvider
-    listKind: MCPProviderList
-    plural: mcpproviders
+    kind: MCPServer
+    listKind: MCPServerList
+    plural: mcpservers
     shortNames:
     - mcpp
     - provider
-    singular: mcpprovider
+    singular: mcpserver
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -41,7 +41,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: MCPProvider is the Schema for the mcpproviders API
+        description: MCPServer is the Schema for the mcpservers API
         properties:
           apiVersion:
             description: |-
@@ -61,7 +61,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MCPProviderSpec defines the desired state of MCPProvider
+            description: MCPServerSpec defines the desired state of MCPServer
             properties:
               affinity:
                 description: Affinity rules for pod scheduling
@@ -1242,7 +1242,11 @@ spec:
                       enabled:
                         type: boolean
                       port:
+                        description: Port is the TCP port the metrics endpoint listens
+                          on.
                         format: int32
+                        maximum: 65535
+                        minimum: 1
                         type: integer
                     type: object
                   tracing:
@@ -1466,7 +1470,7 @@ spec:
             - mode
             type: object
           status:
-            description: MCPProviderStatus defines the observed state of MCPProvider
+            description: MCPServerStatus defines the observed state of MCPServer
             properties:
               availableReplicas:
                 description: AvailableReplicas is the number of available replicas
@@ -1704,7 +1708,7 @@ spec:
                 items:
                   description: |-
                     ViolationRecord represents a detected capability violation.
-                    Stored in MCPProviderStatus.Violations for audit and visibility via kubectl.
+                    Stored in MCPServerStatus.Violations for audit and visibility via kubectl.
                   properties:
                     action:
                       description: 'Action is the enforcement action taken: alert,
@@ -1752,6 +1756,14 @@ spec:
                 type: array
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: 'wildcard egress (host: ''*'') requires annotation hangar.io/allow-unrestricted-egress:
+            "true"'
+          rule: '!has(self.spec.capabilities) || !has(self.spec.capabilities.network)
+            || !has(self.spec.capabilities.network.egress) || !self.spec.capabilities.network.egress.exists(e,
+            e.host == ''*'') || (has(self.metadata.annotations) && (''hangar.io/allow-unrestricted-egress''
+            in self.metadata.annotations) && self.metadata.annotations[''hangar.io/allow-unrestricted-egress'']
+            == ''true'')'
     served: true
     storage: false
     subresources:
@@ -1778,7 +1790,7 @@ spec:
     name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: MCPProvider is the Schema for the mcpproviders API
+        description: MCPServer is the Schema for the mcpservers API
         properties:
           apiVersion:
             description: |-
@@ -1798,7 +1810,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: MCPProviderSpec defines the desired state of MCPProvider
+            description: MCPServerSpec defines the desired state of MCPServer
             properties:
               affinity:
                 description: Affinity rules for pod scheduling
@@ -2983,7 +2995,11 @@ spec:
                       enabled:
                         type: boolean
                       port:
+                        description: Port is the TCP port the metrics endpoint listens
+                          on.
                         format: int32
+                        maximum: 65535
+                        minimum: 1
                         type: integer
                     type: object
                   tracing:
@@ -3207,7 +3223,7 @@ spec:
             - mode
             type: object
           status:
-            description: MCPProviderStatus defines the observed state of MCPProvider
+            description: MCPServerStatus defines the observed state of MCPServer
             properties:
               availableReplicas:
                 description: AvailableReplicas is the number of available replicas
@@ -3471,7 +3487,7 @@ spec:
                 items:
                   description: |-
                     ViolationRecord represents a detected capability violation.
-                    Stored in MCPProviderStatus.Violations for audit and visibility via kubectl.
+                    Stored in MCPServerStatus.Violations for audit and visibility via kubectl.
                   properties:
                     action:
                       description: 'Action is the enforcement action taken: alert,
@@ -3519,6 +3535,14 @@ spec:
                 type: array
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: 'wildcard egress (host: ''*'') requires annotation hangar.io/allow-unrestricted-egress:
+            "true"'
+          rule: '!has(self.spec.capabilities) || !has(self.spec.capabilities.network)
+            || !has(self.spec.capabilities.network.egress) || !self.spec.capabilities.network.egress.exists(e,
+            e.host == ''*'') || (has(self.metadata.annotations) && (''hangar.io/allow-unrestricted-egress''
+            in self.metadata.annotations) && self.metadata.annotations[''hangar.io/allow-unrestricted-egress'']
+            == ''true'')'
     served: true
     storage: true
     subresources:
