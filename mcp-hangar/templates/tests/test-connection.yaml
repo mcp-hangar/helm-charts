@@ -19,7 +19,7 @@ spec:
     - name: wget
       image: busybox:1.37
       command: ['wget']
-      args: ['--spider', '--timeout=5', '{{ include "mcp-hangar.fullname" . }}:{{ .Values.service.port }}/health']
+      args: ['--spider', '--timeout=5', '{{ include "mcp-hangar.fullname" . }}:{{ .Values.service.port }}/health/ready']
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true

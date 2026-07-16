@@ -13,15 +13,23 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow HTTP traffic on the service port
+    # Allow HTTP traffic on the service port, scoped to the release namespace
     - ports:
         - port: {{ .Values.service.port }}
           protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
     {{- if .Values.networkPolicy.allowMonitoring }}
-    # Allow Prometheus scraping
+    # Allow Prometheus scraping from the monitoring namespace
     - ports:
         - port: {{ .Values.service.port }}
           protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.monitoringNamespace }}
     {{- end }}
     {{- with .Values.networkPolicy.additionalIngress }}
     {{- toYaml . | nindent 4 }}
