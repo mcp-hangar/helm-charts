@@ -9,9 +9,14 @@ This repository contains official Helm charts for MCP Hangar.
 
 ## Charts
 
-- **mcp-hangar** — Core MCP Hangar server (app chart, version 0.12.0, appVersion 0.12.0)
-- **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management (version 0.12.0)
-- **hangar-agent** — Agent deployed in Kubernetes clusters, connects to control plane via gRPC (version 0.1.0)
+- **mcp-hangar** — Core MCP Hangar server (chart `0.13.2`, appVersion `1.5.0`)
+- **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management (chart `0.12.1`, appVersion `0.12.2`)
+- **hangar-agent** — Agent deployed in Kubernetes clusters, connects to control plane via gRPC (chart `0.1.1`, appVersion `0.1.1`)
+
+Versions above are the current published charts. See [RELEASE.md](RELEASE.md) for
+how charts are versioned and published, and the
+[compatibility matrix](https://github.com/mcp-hangar/docs/blob/main/operations/RELEASE_COMPATIBILITY.md)
+for supported combinations and verified digests.
 
 ## Prerequisites
 
@@ -26,20 +31,25 @@ Install the charts directly from the GHCR OCI registry.
 # Add namespace
 kubectl create namespace mcp-hangar
 
-# Install core server
+# Install core server.
+# The 1.5 server refuses to bind a non-loopback interface without auth. For a
+# quick/insecure demo, opt in with config.unsafeNoAuth=true; for anything real,
+# configure the `auth` block instead (see the chart's values.yaml).
 helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
-  --version 0.12.0 \
-  --namespace mcp-hangar
+  --version 0.13.2 \
+  --namespace mcp-hangar \
+  --set config.unsafeNoAuth=true
 
 # Install operator
 helm install mcp-hangar-operator oci://ghcr.io/mcp-hangar/charts/mcp-hangar-operator \
-  --version 0.12.0 \
+  --version 0.12.1 \
   --namespace mcp-hangar
 
-# Install agent
+# Install agent (requires a license key; connects out to Hangar Cloud)
 helm install hangar-agent oci://ghcr.io/mcp-hangar/charts/hangar-agent \
-  --version 0.1.0 \
-  --namespace mcp-hangar
+  --version 0.1.1 \
+  --namespace mcp-hangar \
+  --set agent.licenseKey=<your-key>
 ```
 
 ## Install from Source
@@ -62,7 +72,8 @@ The core application chart for the MCP Hangar server.
 Key configuration options in `values.yaml`:
 - `replicaCount`: Number of server instances.
 - `image`: Container image repository and tag.
-- `config.providers`: Configuration for MCP providers.
+- `config.mcp_servers`: Backend MCP servers the gateway fronts.
+- `config.unsafeNoAuth` / `auth`: bind without auth (demo) or configure OIDC/API-key auth.
 - `service`: Service type and port configuration.
 - `resources`: Pod resource requests and limits.
 - `serviceMonitor`: Enable Prometheus monitoring.
