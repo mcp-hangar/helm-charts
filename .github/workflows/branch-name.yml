@@ -10,5 +10,5 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  branch-name:
     uses: mcp-hangar/.github/.github/workflows/branch-name.yml@main

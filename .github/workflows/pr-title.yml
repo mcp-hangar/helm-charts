@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  pr-title:
     uses: mcp-hangar/.github/.github/workflows/pr-title.yml@main
     with:
       scopes: |

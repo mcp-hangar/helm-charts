@@ -10,5 +10,5 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  pr-body:
     uses: mcp-hangar/.github/.github/workflows/pr-body.yml@main
