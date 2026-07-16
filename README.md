@@ -11,7 +11,6 @@ This repository contains official Helm charts for MCP Hangar.
 
 - **mcp-hangar** — Core MCP Hangar server (chart `0.13.2`, appVersion `1.5.0`)
 - **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management (chart `0.12.1`, appVersion `0.12.2`)
-- **hangar-agent** — Agent deployed in Kubernetes clusters, connects to control plane via gRPC (chart `0.1.1`, appVersion `0.1.1`)
 
 Versions above are the current published charts. See [RELEASE.md](RELEASE.md) for
 how charts are versioned and published, and the
@@ -44,12 +43,6 @@ helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
 helm install mcp-hangar-operator oci://ghcr.io/mcp-hangar/charts/mcp-hangar-operator \
   --version 0.12.1 \
   --namespace mcp-hangar
-
-# Install agent (requires a license key; connects out to Hangar Cloud)
-helm install hangar-agent oci://ghcr.io/mcp-hangar/charts/hangar-agent \
-  --version 0.1.1 \
-  --namespace mcp-hangar \
-  --set agent.licenseKey=<your-key>
 ```
 
 ## Install from Source
@@ -60,7 +53,6 @@ cd helm-charts
 
 helm install mcp-hangar ./mcp-hangar -n mcp-hangar
 helm install mcp-hangar-operator ./mcp-hangar-operator -n mcp-hangar
-helm install hangar-agent ./hangar-agent -n mcp-hangar
 ```
 
 ## Chart Overview
@@ -90,17 +82,6 @@ Key configuration options in `values.yaml`:
 - `resources`: Pod resource requests and limits.
 - `metrics`: Metrics service configuration.
 
-### hangar-agent
-
-The agent connects remote Kubernetes clusters to the control plane.
-
-Key configuration options in `values.yaml`:
-- `agent.cloudAddr`: Address of the MCP Hangar control plane.
-- `agent.licenseKey`: Required license key for agent authentication.
-- `persistence`: Storage configuration for agent state.
-- `tlsEnabled`: Enable TLS for gRPC communication.
-- `WAL`: Write-ahead logging configuration for persistence.
-
 ## Development
 
 Use these commands for local development and testing.
@@ -110,7 +91,6 @@ Use these commands for local development and testing.
 ```bash
 helm lint mcp-hangar
 helm lint mcp-hangar-operator
-helm lint hangar-agent
 ```
 
 ### Rendering Templates
@@ -118,7 +98,6 @@ helm lint hangar-agent
 ```bash
 helm template mcp-hangar ./mcp-hangar
 helm template mcp-hangar-operator ./mcp-hangar-operator
-helm template hangar-agent ./hangar-agent
 ```
 
 ### Packaging
@@ -126,7 +105,6 @@ helm template hangar-agent ./hangar-agent
 ```bash
 helm package mcp-hangar
 helm package mcp-hangar-operator
-helm package hangar-agent
 ```
 
 ## License

@@ -11,7 +11,6 @@ cd helm-charts
 # Lint
 helm lint mcp-hangar
 helm lint mcp-hangar-operator
-helm lint hangar-agent
 
 # Template (dry-run render)
 helm template my-release mcp-hangar

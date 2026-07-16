@@ -17,7 +17,6 @@ on:
     paths:
       - 'mcp-hangar/**'
       - 'mcp-hangar-operator/**'
-      - 'hangar-agent/**'
   workflow_dispatch:
 
 permissions:
@@ -31,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chart: [mcp-hangar, mcp-hangar-operator, hangar-agent]
+        chart: [mcp-hangar, mcp-hangar-operator]
     steps:
       - uses: actions/checkout@v4
 
