@@ -10,7 +10,15 @@ metadata:
     cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "mcp-hangar-operator.fullname" . }}-webhook
   {{- end }}
 webhooks:
-  - name: vmcpserver.mcp-hangar.io
+  # The 0.12.2 image registers a validating admission webhook for every
+  # served version of every kind that has spec constraints: MCPServer,
+  # MCPServerGroup, and MCPDiscoverySource, each at both v1alpha1 and
+  # v1alpha2 (v1alpha2 is the storage version but is also served, and
+  # writes submitted at v1alpha2 never reach the v1alpha1 validator -- see
+  # internal/webhook/*.go and cmd/operator/main.go in the operator source).
+  # Every one of these must be wired here, or admission for that
+  # kind/version is silently unreachable (issue #32).
+  - name: vmcpserver-v1alpha1.mcp-hangar.io
     admissionReviewVersions:
       - v1
     clientConfig:
@@ -31,6 +39,126 @@ webhooks:
           - UPDATE
         resources:
           - mcpservers
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  - name: vmcpserver-v1alpha2.mcp-hangar.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-mcp-hangar-io-v1alpha2-mcpserver
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: Equivalent
+    rules:
+      - apiGroups:
+          - mcp-hangar.io
+        apiVersions:
+          - v1alpha2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - mcpservers
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  - name: vmcpservergroup-v1alpha1.mcp-hangar.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-mcp-hangar-io-v1alpha1-mcpservergroup
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: Equivalent
+    rules:
+      - apiGroups:
+          - mcp-hangar.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - mcpservergroups
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  - name: vmcpservergroup-v1alpha2.mcp-hangar.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-mcp-hangar-io-v1alpha2-mcpservergroup
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: Equivalent
+    rules:
+      - apiGroups:
+          - mcp-hangar.io
+        apiVersions:
+          - v1alpha2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - mcpservergroups
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  - name: vmcpdiscoverysource-v1alpha1.mcp-hangar.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-mcp-hangar-io-v1alpha1-mcpdiscoverysource
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: Equivalent
+    rules:
+      - apiGroups:
+          - mcp-hangar.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - mcpdiscoverysources
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  - name: vmcpdiscoverysource-v1alpha2.mcp-hangar.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-mcp-hangar-io-v1alpha2-mcpdiscoverysource
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: Equivalent
+    rules:
+      - apiGroups:
+          - mcp-hangar.io
+        apiVersions:
+          - v1alpha2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - mcpdiscoverysources
         scope: Namespaced
     sideEffects: None
     timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}

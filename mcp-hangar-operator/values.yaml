@@ -1,8 +1,21 @@
 # MCP-Hangar Operator Configuration
 # ===================================
 
-# Replica count for operator deployment (2 for HA with leader election)
-replicaCount: 2
+# Replica count for operator deployment.
+#
+# Defaults to 1. The operator gates /readyz on winning leader election
+# (operator.leaderElection.enabled=true): only the elected leader reports
+# Ready, and standby replicas legitimately stay NotReady until they win
+# leadership. That's correct steady-state behavior, but with
+# `helm install/upgrade --wait`, Helm waits for ALL Pods in the Deployment
+# to become Ready -- with replicaCount >= 2 it will wait for every standby
+# to also become the leader, which never happens, and the wait times out
+# (issue #26).
+#
+# Set replicaCount >= 2 for HA once you're not relying on `helm --wait`
+# to gate on Deployment readiness (e.g. CI/CD that polls a different
+# signal, or accepts that standby replicas report NotReady by design).
+replicaCount: 1
 
 # Operator image configuration
 image:

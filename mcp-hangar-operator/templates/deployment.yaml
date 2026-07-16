@@ -62,7 +62,6 @@ spec:
             {{- end }}
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
-            - --webhook-port={{ .Values.webhook.port }}
             {{- end }}
           env:
             - name: POD_NAMESPACE
@@ -92,6 +91,10 @@ spec:
               containerPort: {{ .Values.operator.health.port }}
               protocol: TCP
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
+            # The 0.12.2 image has no --webhook-port flag; controller-runtime's
+            # webhook server always binds its built-in default of 9443. This
+            # containerPort (and the Service/Certificate) must stay at
+            # .Values.webhook.port's default of 9443 to match (issue #31).
             - name: webhook
               containerPort: {{ .Values.webhook.port }}
               protocol: TCP

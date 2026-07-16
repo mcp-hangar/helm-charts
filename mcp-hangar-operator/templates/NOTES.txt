@@ -1,5 +1,15 @@
 MCP Hangar Operator has been installed.
 
+{{- if gt (int .Values.replicaCount) 1 }}
+NOTE: replicaCount is set to {{ .Values.replicaCount }} (HA mode). The operator
+gates /readyz on leader election, so only the elected leader Pod reports
+Ready; the other {{ sub (int .Values.replicaCount) 1 }} replica(s) will show
+NotReady in `kubectl get pods` until they win leadership on a failover. This
+is expected. Avoid `helm upgrade --wait` with replicaCount >= 2 -- Helm waits
+for every Pod in the Deployment to become Ready, which standby replicas never
+do on their own.
+{{- end }}
+
 Check CRD status:
 
   kubectl get mcpservers
