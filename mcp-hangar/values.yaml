@@ -124,7 +124,22 @@ networkPolicy:
   monitoringNamespace: monitoring
   # Additional ingress rules (appended as-is; use to allow other namespaces/peers)
   additionalIngress: []
-  # Additional egress rules
+  # Allow egress to any pod in the release namespace (all ports/protocols).
+  # Covers co-located MCP backends (mcp_servers.*.mode: remote endpoints running
+  # in this namespace) as well as the helm-test connection hook pod reaching the
+  # gateway. Disable only if you scope backend access via additionalEgress instead.
+  allowSameNamespaceEgress: true
+  # Allow egress on 443/TCP to anywhere. Needed for OIDC issuer/JWKS discovery
+  # and for remote MCP backends reachable over HTTPS outside the release
+  # namespace.
+  allowHTTPSEgress: true
+  # Additional egress rules (appended as-is). Required for anything not covered
+  # above, e.g.:
+  #   - MCP backends running in a different namespace or outside the cluster
+  #     (add a namespaceSelector/podSelector rule, or a to.ipBlock/to.ipBlock+
+  #     ports rule for external endpoints)
+  #   - Non-443 external endpoints (OIDC on a nonstandard port, plaintext HTTP
+  #     backends outside the release namespace, etc.)
   additionalEgress: []
 
 # ── Pod Disruption Budget ──────────────────────────────────────────────
