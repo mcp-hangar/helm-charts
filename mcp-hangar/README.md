@@ -20,11 +20,11 @@ helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
   --set resources.requests.memory=512Mi
 ```
 
-### With Providers
+### With MCP Servers
 
 ```yaml
 # values.yaml
-providers:
+mcp_servers:
   math:
     mode: subprocess
     command: ["python", "-m", "math_server"]
@@ -48,7 +48,9 @@ helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar -f values.yam
 | service.port | int | `8080` | Service port |
 | config.logLevel | string | `INFO` | Log level |
 | config.jsonLogs | bool | `true` | Enable JSON logging |
-| providers | object | `{}` | Provider configurations |
+| mcp_servers | object | `{}` | MCP server configurations |
+| config.unsafeNoAuth | bool | `false` | Allow binding HTTP on non-loopback without auth (demo/insecure only) |
+| auth | object | `{}` | Auth configuration rendered into config.yaml `auth:` section |
 | serviceMonitor.enabled | bool | `false` | Enable Prometheus ServiceMonitor |
 
 ## License
