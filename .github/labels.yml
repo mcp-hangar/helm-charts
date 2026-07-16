@@ -26,10 +26,6 @@
   color: ededed
   description: mcp-hangar-operator chart
 
-- name: scope/agent
-  color: ededed
-  description: hangar-agent chart
-
 - name: scope/ci
   color: ededed
   description: GitHub Actions, automation

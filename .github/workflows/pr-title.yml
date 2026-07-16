@@ -15,7 +15,6 @@ jobs:
     uses: mcp-hangar/.github/.github/workflows/pr-title.yml@main
     with:
       scopes: |
-        agent
         ci
         deps
         docs
