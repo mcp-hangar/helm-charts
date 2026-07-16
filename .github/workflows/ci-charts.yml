@@ -1,0 +1,314 @@
+# Why this exists: this repo had zero chart CI -- no `helm lint`, no
+# `helm template`, no install test. Three charts shipped in states that
+# could not actually be installed (see #25, #26, #27, #30, #31, #32, #33,
+# #34), each found by hand during a live test campaign. Rendering cleanly
+# is not the same as installing and working: a config key the image
+# rejects, a CLI flag the image doesn't accept, CRDs that don't match what
+# the image watches, or a `--wait` that hangs on the default replica count
+# all produce charts that lint and template fine and then crashloop or
+# hang for a real user. This workflow asserts INSTALL, not just render.
+name: ci-charts
+
+on:
+  pull_request:
+    paths:
+      - 'mcp-hangar/**'
+      - 'mcp-hangar-operator/**'
+      - 'hangar-agent/**'
+      - '.github/workflows/ci-charts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mcp-hangar/**'
+      - 'mcp-hangar-operator/**'
+      - 'hangar-agent/**'
+      - '.github/workflows/ci-charts.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  KUBECONFORM_VERSION: v0.8.0
+  # Deliberate choices, not moving defaults: KUBERNETES_VERSION,
+  # KIND_VERSION and KIND_NODE_IMAGE must stay in sync (the node image and
+  # kubeconform's schema version both come from the same k8s release).
+  KUBERNETES_VERSION: "1.32.8"
+  KIND_VERSION: v0.30.0
+  KIND_NODE_IMAGE: kindest/node:v1.32.8@sha256:abd489f042d2b644e2d033f5c2d900bc707798d075e8186cb65e3f1367a9d5a1
+
+jobs:
+  # Fast: no cluster. Catches template/schema-level defects (bad YAML,
+  # invalid fields, wrong apiVersions) in seconds, per chart.
+  lint-and-render:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: [mcp-hangar, mcp-hangar-operator, hangar-agent]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Install kubeconform
+        run: |
+          set -euo pipefail
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar xz -C /usr/local/bin kubeconform
+
+      - name: helm lint
+        run: helm lint "${{ matrix.chart }}"
+
+      - name: helm template (default values) | kubeconform
+        run: |
+          set -euo pipefail
+          # hangar-agent has a `required` on agent.licenseKey; harmlessly
+          # ignored by the other two charts (unused value path).
+          helm template t "${{ matrix.chart }}" --set agent.licenseKey=dummy-ci-key \
+            | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
+
+      - name: helm template (ci-values.yaml) | kubeconform
+        if: hashFiles(format('{0}/ci-values.yaml', matrix.chart)) != ''
+        run: |
+          set -euo pipefail
+          helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" --set agent.licenseKey=dummy-ci-key \
+            | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
+
+  # The crux: install each chart against its pinned appVersion image on a
+  # real cluster and assert it actually works, not just that it renders.
+  install-smoke:
+    needs: lint-and-render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.KIND_NODE_IMAGE }}
+          cluster_name: chart-ci
+          wait: 90s
+
+      # ── core (mcp-hangar) ────────────────────────────────────────────
+      # unsafeNoAuth: the 1.5 server refuses to bind non-loopback without
+      # auth configured. That's intended behavior; the flag is the
+      # documented demo path, and what we use here to exercise the rest
+      # of the install without also standing up an OIDC provider.
+      - name: Install core (mcp-hangar)
+        id: install_core
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          echo "::group::helm install core"
+          helm install core ./mcp-hangar -n core --create-namespace --wait --timeout 300s \
+            --set config.unsafeNoAuth=true
+          echo "::endgroup::"
+
+          echo "::group::pod readiness"
+          kubectl -n core get pods -o wide
+          kubectl -n core wait --for=condition=Ready pod \
+            -l app.kubernetes.io/name=mcp-hangar,app.kubernetes.io/instance=core \
+            --timeout=60s
+          echo "::endgroup::"
+
+          echo "::group::GET /health/ready"
+          kubectl -n core port-forward svc/core-mcp-hangar 18080:8080 >/tmp/core-pf.log 2>&1 &
+          pf_pid=$!
+          trap 'kill "$pf_pid" 2>/dev/null || true' EXIT
+
+          code=""
+          ready=false
+          for _ in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/ready || true)
+            if [ "$code" = "200" ]; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            echo "::error::GET /health/ready did not return 200 (last code: ${code:-<none>})"
+            cat /tmp/core-pf.log || true
+            exit 1
+          fi
+          echo "GET /health/ready -> 200"
+          kill "$pf_pid" 2>/dev/null || true
+          trap - EXIT
+          echo "::endgroup::"
+
+          echo "::group::helm test core"
+          helm test core -n core --logs
+          echo "::endgroup::"
+
+      - name: Diagnostics (core) on failure
+        if: steps.install_core.outcome == 'failure'
+        run: |
+          echo "---- pods ----"
+          kubectl -n core get pods -o wide || true
+          echo "---- describe pods ----"
+          kubectl -n core describe pods || true
+          echo "---- events ----"
+          kubectl -n core get events --sort-by=.lastTimestamp || true
+          echo "---- logs ----"
+          kubectl -n core logs -l app.kubernetes.io/name=mcp-hangar --all-containers --tail=300 || true
+          echo "---- port-forward log ----"
+          cat /tmp/core-pf.log || true
+
+      # ── operator (mcp-hangar-operator) ───────────────────────────────
+      # Default values (webhooks off) -- no cert-manager in this cluster.
+      - name: Install operator (mcp-hangar-operator)
+        id: install_operator
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          echo "::group::helm install operator"
+          helm install op ./mcp-hangar-operator -n op --create-namespace --wait --timeout 300s
+          echo "::endgroup::"
+
+          echo "::group::operator pod readiness"
+          kubectl -n op get pods -o wide
+          kubectl -n op wait --for=condition=Ready pod \
+            -l app.kubernetes.io/name=mcp-hangar-operator,app.kubernetes.io/instance=op \
+            --timeout=60s
+          echo "::endgroup::"
+
+          echo "::group::CRDs Established"
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/mcpservers.mcp-hangar.io \
+            crd/mcpservergroups.mcp-hangar.io \
+            crd/mcpdiscoverysources.mcp-hangar.io
+          echo "::endgroup::"
+
+          echo "::group::apply MCPServer sample and wait for reconcile"
+          # A one-line JSON doc via a here-string, not a heredoc: a heredoc
+          # terminator must sit at column 0 to match, which would end the
+          # enclosing YAML `run: |` block scalar early (YAML block scalars
+          # end at the first less-indented line) and break this workflow
+          # file. JSON is valid YAML, so kubectl's decoder accepts it as-is.
+          # Image is deliberately unpullable -- we assert the operator
+          # reconciled (status populated, child Pod created with an
+          # ownerReference back to us), not that the image pulls;
+          # ImagePullBackOff on the child Pod here is expected and fine.
+          kubectl -n op apply -f - <<< '{"apiVersion":"mcp-hangar.io/v1alpha2","kind":"MCPServer","metadata":{"name":"ci-smoke"},"spec":{"mode":"container","image":"ghcr.io/mcp-hangar/does-not-exist:ci-smoke-test"}}'
+
+          pod_name=""
+          deadline=$((SECONDS + 90))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            pod_name="$(kubectl -n op get mcpserver ci-smoke -o jsonpath='{.status.podName}' 2>/dev/null || true)"
+            if [ -n "$pod_name" ]; then
+              break
+            fi
+            sleep 3
+          done
+
+          if [ -z "$pod_name" ]; then
+            echo "::error::operator never set status.podName on MCPServer/ci-smoke within 90s"
+            kubectl -n op get mcpserver ci-smoke -o yaml || true
+            exit 1
+          fi
+          echo "status.podName = $pod_name"
+
+          owner="$(kubectl -n op get pod "$pod_name" -o jsonpath='{.metadata.ownerReferences[?(@.kind=="MCPServer")].name}' 2>/dev/null || true)"
+          if [ "$owner" != "ci-smoke" ]; then
+            echo "::error::child Pod $pod_name has no ownerReference back to MCPServer/ci-smoke (got: '${owner:-<none>}')"
+            kubectl -n op get pod "$pod_name" -o yaml || true
+            exit 1
+          fi
+          echo "child Pod $pod_name has ownerReference -> MCPServer/ci-smoke (reconcile confirmed)"
+          echo "::endgroup::"
+
+      - name: Diagnostics (operator) on failure
+        if: steps.install_operator.outcome == 'failure'
+        run: |
+          echo "---- pods ----"
+          kubectl -n op get pods -o wide || true
+          echo "---- describe pods ----"
+          kubectl -n op describe pods || true
+          echo "---- crds ----"
+          kubectl get crds | grep mcp-hangar.io || true
+          echo "---- MCPServer ----"
+          kubectl -n op get mcpserver ci-smoke -o yaml || true
+          echo "---- events ----"
+          kubectl -n op get events --sort-by=.lastTimestamp || true
+          echo "---- operator logs ----"
+          kubectl -n op logs -l app.kubernetes.io/name=mcp-hangar-operator --all-containers --tail=300 || true
+
+      # ── agent (hangar-agent) ─────────────────────────────────────────
+      # No --wait: the agent dials out to Hangar Cloud, which does not
+      # exist in CI, so the readinessProbe (test -f /tmp/agent.ready)
+      # never passes by design. We only assert it boots and stays up
+      # (Running, no CrashLoopBackOff) -- not that it becomes Ready.
+      - name: Install agent (hangar-agent)
+        id: install_agent
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          echo "::group::helm install agent"
+          helm install a ./hangar-agent -n agent --create-namespace \
+            --set agent.licenseKey=dummy-ci-key
+          echo "::endgroup::"
+
+          echo "::group::pod boots and stays up (no CrashLoopBackOff) for ~90s"
+          selector='app.kubernetes.io/name=hangar-agent,app.kubernetes.io/instance=a'
+          deadline=$((SECONDS + 90))
+          phase=""
+          ok=false
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            phase="$(kubectl -n agent get pod -l "$selector" -o jsonpath='{.items[0].status.phase}' 2>/dev/null || true)"
+            waiting_reason="$(kubectl -n agent get pod -l "$selector" -o jsonpath='{.items[0].status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)"
+
+            if [ "$waiting_reason" = "CrashLoopBackOff" ]; then
+              echo "::error::hangar-agent pod is in CrashLoopBackOff"
+              ok=false
+              break
+            fi
+            if [ "$phase" = "Running" ]; then
+              ok=true
+            fi
+            sleep 5
+          done
+
+          kubectl -n agent get pods -o wide
+          if [ "$ok" != "true" ]; then
+            echo "::error::hangar-agent pod never reached (and stayed) Running within 90s (last phase: ${phase:-<none>})"
+            exit 1
+          fi
+          echo "hangar-agent pod is Running and not crash-looping (cloud connection retry is expected to fail in CI)"
+          echo "::endgroup::"
+
+      - name: Diagnostics (agent) on failure
+        if: steps.install_agent.outcome == 'failure'
+        run: |
+          echo "---- pods ----"
+          kubectl -n agent get pods -o wide || true
+          echo "---- describe pods ----"
+          kubectl -n agent describe pods || true
+          echo "---- events ----"
+          kubectl -n agent get events --sort-by=.lastTimestamp || true
+          echo "---- logs ----"
+          kubectl -n agent logs -l app.kubernetes.io/name=hangar-agent --all-containers --tail=300 || true
+
+      - name: Gate on install-smoke results
+        if: always()
+        run: |
+          status=0
+          for pair in "core:${{ steps.install_core.outcome }}" "operator:${{ steps.install_operator.outcome }}" "agent:${{ steps.install_agent.outcome }}"; do
+            name="${pair%%:*}"
+            outcome="${pair##*:}"
+            echo "${name}: ${outcome}"
+            if [ "$outcome" != "success" ]; then
+              status=1
+            fi
+          done
+          exit "$status"
