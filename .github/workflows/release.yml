@@ -1,6 +1,14 @@
 # Publishes each chart to the GHCR OCI registry on push to main, skipping any
-# chart whose version is already published (idempotent). See ADR-009
-# (independent release topology, mcp-hangar/mcp-hangar#410).
+# chart whose version is already published. The publish guard is intended to
+# be idempotent, but it can only be idempotent if it fails safe: the probe
+# (`crane manifest`) must distinguish "not published" (MANIFEST_UNKNOWN /
+# NAME_UNKNOWN -> push) from every other error (registry hiccup, expired
+# token, bad auth, ...). Any other probe failure aborts the job instead of
+# pushing -- an unreadable probe is not evidence the version is unpublished,
+# and a blind push over a real release mutates a tag that ADR-004 digest
+# pinning depends on staying immutable. See ADR-009 (independent release
+# topology, mcp-hangar/mcp-hangar#410) and #36 (root-cause writeup for why an
+# unguarded `-d /tmp/pull` made every merge to main re-push every chart).
 name: release-charts
 
 on:
@@ -30,9 +38,12 @@ jobs:
       - uses: azure/setup-helm@v4
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
+      - uses: imjasonh/setup-crane@v0.4
 
       # helm registry login authenticates `helm push`; cosign reads the *docker*
       # config, so it needs its own GHCR login or the signature push 401s.
+      # (setup-crane above does its own `crane auth login`, so crane doesn't
+      # depend on this step.)
       - name: Registry login (helm)
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -45,22 +56,45 @@ jobs:
       - name: Lint
         run: helm lint "${{ matrix.chart }}"
 
+      # Fail-safe publish guard: probe with `crane manifest` (not `helm pull`,
+      # whose `-d` destination must pre-exist or the pull errors regardless of
+      # whether the version is published -- see #36). A clean probe (rc=0)
+      # means the tag exists -> skip. A probe that fails with MANIFEST_UNKNOWN
+      # or NAME_UNKNOWN means the tag does not exist -> push. Any other
+      # failure (auth, 5xx, network) is NOT evidence of "unpublished" -- fail
+      # the job instead of pushing blind over what might be a real release.
       - name: Publish if the version is new
+        id: publish
         run: |
           set -euo pipefail
           name="${{ matrix.chart }}"
           version="$(helm show chart "$name" | awk -F': *' '/^version:/{print $2; exit}')"
-          if helm pull "oci://ghcr.io/mcp-hangar/charts/${name}" --version "$version" -d /tmp/pull >/dev/null 2>&1; then
+          ref="ghcr.io/mcp-hangar/charts/${name}:${version}"
+
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
+
+          if probe_out="$(crane manifest "$ref" 2>&1)"; then
             echo "::notice::${name} ${version} already published — skipping push."
-          else
+          elif echo "$probe_out" | grep -qE 'MANIFEST_UNKNOWN|NAME_UNKNOWN'; then
+            echo "::notice::${name} ${version} not yet published — pushing."
             helm package "$name" -d /tmp/pkg
             helm push "/tmp/pkg/${name}-${version}.tgz" oci://ghcr.io/mcp-hangar/charts
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::crane manifest probe for ${ref} failed for a reason other than 'not published' (expected MANIFEST_UNKNOWN/NAME_UNKNOWN). Refusing to push blind. Probe output follows."
+            echo "$probe_out"
+            exit 1
           fi
 
-      # Sign + attest the current version by tag (cosign resolves it to a digest).
-      # Runs whether the chart was just pushed or already published, so a version
-      # that was published unsigned gets signed on the next run.
+      # Sign + attest the version this run just pushed (cosign resolves the tag
+      # to a digest). Gated on an actual push this run, not "every merge",
+      # because re-signing an unchanged digest on every merge produced a pile
+      # of duplicate .sig/.att tags (see #36) -- every published chart is
+      # signed now, so there's no longer a backlog to sweep up here.
+      # workflow_dispatch stays available for a manual re-sign if that ever
+      # changes.
       - name: Sign and attest (keyless)
+        if: steps.publish.outputs.pushed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           name="${{ matrix.chart }}"
