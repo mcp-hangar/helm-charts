@@ -1,0 +1,86 @@
+# Keeps the mcp-hangar chart's `appVersion` tracking the latest published core
+# (mcp-hangar) release. The chart deploys `ghcr.io/mcp-hangar/mcp-hangar:<appVersion>`,
+# so when appVersion lags a core release, `helm install` ships the older image —
+# which is exactly how the CVE-2026-59950 fix reached PyPI (core 1.5.1) while
+# Kubernetes/Helm users stayed on the vulnerable 1.5.0 until the chart was bumped
+# by hand. This closes that drift: it reads the latest core release, and if the
+# chart is behind, opens a PR bumping appVersion. release-please then cuts the
+# chart version. Pull-based (no cross-repo token needed to read a public release);
+# runs daily and on demand.
+name: sync-core-appversion
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # daily; the manual trigger covers "just released, bump now"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # Opening the PR with the App token (not GITHUB_TOKEN) makes release-please and
+  # the PR validators actually run on it. Falls back to GITHUB_TOKEN if the app
+  # secret is absent (the PR still opens; downstream workflows just won't trigger).
+  RELEASE_BOT_APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        if: ${{ env.RELEASE_BOT_APP_ID != '' }}
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Compare chart appVersion to the latest core release
+        id: v
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          core="$(gh release view -R mcp-hangar/mcp-hangar --json tagName --jq '.tagName' | sed 's/^v//')"
+          cur="$(awk -F'"' '/^appVersion:/{print $2; exit}' mcp-hangar/Chart.yaml)"
+          echo "core=$core" >> "$GITHUB_OUTPUT"
+          echo "cur=$cur"   >> "$GITHUB_OUTPUT"
+          # Only bump forward: behind = core is strictly newer than cur (SemVer).
+          if [ "$core" != "$cur" ] && [ "$(printf '%s\n%s\n' "$cur" "$core" | sort -V | tail -1)" = "$core" ]; then
+            echo "behind=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::mcp-hangar chart appVersion $cur is behind core release $core — opening a bump PR."
+          else
+            echo "behind=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::mcp-hangar chart appVersion $cur is current with core $core — nothing to do."
+          fi
+
+      - name: Bump appVersion
+        if: steps.v.outputs.behind == 'true'
+        run: |
+          set -euo pipefail
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.v.outputs.core }}\"/" mcp-hangar/Chart.yaml
+          grep -n '^appVersion:' mcp-hangar/Chart.yaml
+
+      - name: Open PR
+        if: steps.v.outputs.behind == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          branch: chore/sync-core-appversion
+          delete-branch: true
+          commit-message: "fix(hangar): default the mcp-hangar chart to core image ${{ steps.v.outputs.core }}"
+          title: "fix(hangar): default the mcp-hangar chart to core image ${{ steps.v.outputs.core }}"
+          body: |
+            Automated by `sync-core-appversion` — the `mcp-hangar` chart's `appVersion` lagged the latest published core release.
+
+            ## Why
+
+            The chart deploys `ghcr.io/mcp-hangar/mcp-hangar:<appVersion>` (`values.yaml` `tag: ""` → `.Chart.AppVersion`). Core released **${{ steps.v.outputs.core }}** but the chart still defaulted to **${{ steps.v.outputs.cur }}**, so `helm install` shipped the older image. This is the drift that left Kubernetes/Helm users on the pre-CVE-2026-59950 image after core 1.5.1 was published. release-please cuts the chart version on merge.
+
+            ## How tested
+
+            appVersion-only bump to an already-published core release; `ci-charts` render/install applies on this PR.
