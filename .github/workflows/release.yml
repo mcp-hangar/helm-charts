@@ -38,6 +38,12 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
       - uses: imjasonh/setup-crane@v0.4
+        with:
+          # Pin crane instead of the default `latest-release`, which resolves the
+          # version via a GitHub API call that returned non-JSON and aborted the
+          # whole publish (jq parse error -> empty tag -> exit 5), leaving chart
+          # 0.13.3 unpublished. A pinned version has no such runtime dependency.
+          version: v0.20.2
 
       # helm registry login authenticates `helm push`; cosign reads the *docker*
       # config, so it needs its own GHCR login or the signature push 401s.
