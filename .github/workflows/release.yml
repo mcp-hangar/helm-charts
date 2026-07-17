@@ -37,7 +37,7 @@ jobs:
       - uses: azure/setup-helm@v4
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
-      - uses: imjasonh/setup-crane@v0.4
+      - uses: imjasonh/setup-crane@v0.7
         with:
           # Pin crane instead of the default `latest-release`, which resolves the
           # version via a GitHub API call that returned non-JSON and aborted the
