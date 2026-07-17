@@ -1,0 +1,19 @@
+# Dependabot version-updates. This repo ships Helm charts (no app package
+# manager), so only the GitHub Actions used in workflows are tracked. Grouped
+# minor+patch; conventional titles satisfy the reusable pr-title validator.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        update-types:
+          - "minor"
+          - "patch"
