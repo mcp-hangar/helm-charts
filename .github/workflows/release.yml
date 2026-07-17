@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
       - uses: imjasonh/setup-crane@v0.4
