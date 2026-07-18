@@ -67,7 +67,7 @@ jobs:
 
       - name: Open PR
         if: steps.v.outputs.behind == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           branch: chore/sync-core-appversion
