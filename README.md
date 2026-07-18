@@ -31,20 +31,28 @@ Install the charts directly from the GHCR OCI registry.
 # Add namespace
 kubectl create namespace mcp-hangar
 
-# Install core server.
-# The 1.5 server refuses to bind a non-loopback interface without auth. For a
-# quick/insecure demo, opt in with config.unsafeNoAuth=true; for anything real,
-# configure the `auth` block instead (see the chart's values.yaml).
+# Install the core server (latest published chart). For a quick, insecure demo
+# opt in with config.unsafeNoAuth=true; the server's fail-closed auth behavior
+# is documented in the core README (linked below).
 helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
-  --version 0.13.2 \
   --namespace mcp-hangar \
   --set config.unsafeNoAuth=true
 
-# Install operator
+# Install the operator (latest published chart)
 helm install mcp-hangar-operator oci://ghcr.io/mcp-hangar/charts/mcp-hangar-operator \
-  --version 0.12.1 \
   --namespace mcp-hangar
 ```
+
+> **Pin a version:** these commands install the latest published charts. For a
+> reproducible deploy, add `--version <x.y.z>` from the
+> [release compatibility matrix](https://github.com/mcp-hangar/docs/blob/main/operations/RELEASE_COMPATIBILITY.md),
+> which is the single source of truth for which core, operator, and chart
+> versions are released and tested together (never hardcoded here -- see
+> [ADR-011](https://github.com/mcp-hangar/docs/blob/main/adr/ADR-011-single-source-of-truth-cross-repo-facts.md)).
+>
+> **Server auth behavior** (fail-closed on a non-loopback bind, `unsafeNoAuth`)
+> is owned by the [core README](https://github.com/mcp-hangar/mcp-hangar#quickstart),
+> not re-documented here.
 
 ## Install from Source
 
