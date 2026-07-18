@@ -162,4 +162,43 @@ webhooks:
         scope: Namespaced
     sideEffects: None
     timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  {{- if .Values.webhook.podRegistration.enabled }}
+  # Pod-registration webhook (operator #50/#69): rejects a Pod labelled
+  # mcp-hangar.io/provider=<name> on CREATE when no MCPServer <name> is
+  # registered in its namespace -- unregistered instances fail deployment
+  # (OWASP MCP09), not just get firewalled by the phase-1 default-deny.
+  #
+  # failurePolicy is pinned to Fail (not webhook.failurePolicy): a soft policy
+  # would let an unavailable operator silently admit unregistered pods,
+  # defeating the guarantee. That is only safe because namespaceSelector scopes
+  # the webhook to opted-in namespaces (mcp-hangar.io/enforce-egress=true) --
+  # without it, an unavailable webhook would block ALL pod creation
+  # cluster-wide. Both are intentionally hardcoded and must stay coupled.
+  - name: vpod-registration.kb.io
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "mcp-hangar-operator.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-pod-registration
+        port: 443
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    namespaceSelector:
+      matchLabels:
+        mcp-hangar.io/enforce-egress: "true"
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - pods
+        scope: Namespaced
+    sideEffects: None
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+  {{- end }}
 {{- end }}

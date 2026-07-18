@@ -219,6 +219,22 @@ webhook:
   failurePolicy: Fail
   # Timeout in seconds for webhook calls
   timeoutSeconds: 10
+  # Pod-registration admission webhook (operator #50/#69). Rejects pods
+  # labelled mcp-hangar.io/provider=<name> when no MCPServer <name> is
+  # registered in the namespace. Off by default: it is the stronger
+  # enforcement posture and only acts in namespaces labelled
+  # mcp-hangar.io/enforce-egress=true (the webhook is namespace-scoped and
+  # failurePolicy: Fail). Enable once your governed namespaces carry that
+  # label. Requires webhook.enabled=true.
+  #
+  # VERSION REQUIREMENT: the operator image must serve /validate-pod-registration
+  # (mcp-hangar-operator #69). This is NOT in v0.12.2 -- enabling it against an
+  # older image makes the apiserver call a route the operator returns 404 for,
+  # and because failurePolicy is Fail, EVERY pod create in a governed namespace
+  # is blocked. Only enable with an operator image at or past the release that
+  # ships #69.
+  podRegistration:
+    enabled: false
 
 # =============================================================================
 # CRD Management
