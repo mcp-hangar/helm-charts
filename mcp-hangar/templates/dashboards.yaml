@@ -1,0 +1,26 @@
+{{- if .Values.dashboards.enabled }}
+{{- /*
+  One ConfigMap per Grafana dashboard, labeled for the Grafana sidecar to
+  auto-import. Dashboards are the single source of truth in files/dashboards/
+  (mirrored from the repo's monitoring/ stack). .Files.Get inserts the JSON
+  verbatim, so Grafana legend templates ({{`{{label}}`}}) pass through untouched.
+*/}}
+{{- range $path, $_ := .Files.Glob "files/dashboards/*.json" }}
+{{- $name := trimSuffix ".json" (base $path) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mcp-hangar.fullname" $ }}-dashboard-{{ $name }}
+  labels:
+    {{- include "mcp-hangar.labels" $ | nindent 4 }}
+    {{ $.Values.dashboards.sidecarLabel }}: {{ $.Values.dashboards.sidecarLabelValue | quote }}
+  {{- if $.Values.dashboards.folder }}
+  annotations:
+    {{ $.Values.dashboards.folderAnnotation }}: {{ $.Values.dashboards.folder | quote }}
+  {{- end }}
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}
