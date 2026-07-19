@@ -1,0 +1,23 @@
+{{- if .Values.prometheusRule.enabled }}
+{{- if not (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+{{- fail "prometheusRule.enabled is true but the Prometheus Operator CRDs (monitoring.coreos.com/v1) are not installed" }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mcp-hangar.fullname" . }}
+  {{- with .Values.prometheusRule.namespace }}
+  namespace: {{ . }}
+  {{- end }}
+  labels:
+    {{- include "mcp-hangar.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+# The alert groups are maintained as a single source of truth in
+# files/prometheus-alerts.yaml (mirrored from the repo's monitoring/ stack).
+# .Files.Get inserts the content verbatim, so the Prometheus annotation
+# templates ({{`{{ $value }}`}} etc.) pass through untouched.
+spec:
+{{ .Files.Get "files/prometheus-alerts.yaml" | indent 2 }}
+{{- end }}

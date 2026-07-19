@@ -109,6 +109,28 @@ serviceMonitor:
   scrapeTimeout: 10s
   labels: {}
 
+# ── Prometheus alerting rules ──────────────────────────────────────────────
+# Ships the maintained application alert rules (28 alerts across critical/
+# warning/info/governance/availability groups) as a PrometheusRule CR. Requires
+# the Prometheus Operator CRDs (monitoring.coreos.com/v1); enabling without them
+# fails the render with a clear message. Off by default; turn on where Prometheus
+# Operator is present.
+prometheusRule:
+  enabled: false
+  # namespace: monitoring          # default: release namespace
+  additionalLabels: {}             # e.g. { release: kube-prometheus-stack }
+
+# ── Grafana dashboards ─────────────────────────────────────────────────────
+# Ships the 4 maintained dashboards (overview / governance / provider-details /
+# alerts) as ConfigMaps labeled for the Grafana sidecar to auto-import. Off by
+# default; enable when running the Grafana sidecar.
+dashboards:
+  enabled: false
+  sidecarLabel: grafana_dashboard
+  sidecarLabelValue: "1"
+  folder: "MCP Hangar"
+  folderAnnotation: grafana_folder
+
 # ConfigMap for hangar config.yaml
 configMap:
   create: true
