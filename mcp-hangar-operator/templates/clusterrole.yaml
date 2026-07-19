@@ -15,6 +15,7 @@ rules:
       - mcpservers
       - mcpservergroups
       - mcpdiscoverysources
+      - mcpegresspolicies
     verbs:
       - create
       - delete
@@ -30,6 +31,7 @@ rules:
       - mcpservers/status
       - mcpservergroups/status
       - mcpdiscoverysources/status
+      - mcpegresspolicies/status
     verbs:
       - get
       - patch
@@ -41,6 +43,7 @@ rules:
       - mcpservers/finalizers
       - mcpservergroups/finalizers
       - mcpdiscoverysources/finalizers
+      - mcpegresspolicies/finalizers
     verbs:
       - update
 
