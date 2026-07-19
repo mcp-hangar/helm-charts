@@ -4,7 +4,7 @@ description: Production-grade infrastructure for Model Context Protocol
 type: application
 kubeVersion: ">=1.25.0-0"
 version: 0.13.3
-appVersion: "1.5.1"
+appVersion: "1.6.0"
 home: https://mcp-hangar.io
 sources:
   - https://github.com/mcp-hangar/mcp-hangar
