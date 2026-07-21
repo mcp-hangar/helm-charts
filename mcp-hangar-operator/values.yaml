@@ -267,6 +267,11 @@ crds:
 rbac:
   # Create RBAC resources
   create: true
+  # Grant RBAC for cilium.io CiliumNetworkPolicy so the operator's Cilium/Auto
+  # egress-backstop flavor can enforce FQDN upstreams (MCPEgressPolicy). Harmless
+  # (the API group is absent) on non-Cilium clusters; required on Cilium ones,
+  # otherwise the backstop silently fails with a forbidden error.
+  ciliumNetworkPolicies: true
   # Additional rules for ClusterRole
   additionalRules: []
   # Example:
