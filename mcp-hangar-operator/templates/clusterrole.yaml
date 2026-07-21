@@ -135,6 +135,27 @@ rules:
       - update
       - watch
 
+  {{- if .Values.rbac.ciliumNetworkPolicies }}
+  # ==========================================================================
+  # CiliumNetworkPolicies (FQDN-aware egress backstop; MCPEgressPolicy flavor
+  # Cilium/Auto). Without this the operator cannot apply the Cilium backstop and
+  # the MCPEgressPolicy stays Compiled but silently un-enforced. Inert (the API
+  # group does not exist) on clusters without Cilium, so safe to grant by default.
+  # ==========================================================================
+  - apiGroups:
+      - cilium.io
+    resources:
+      - ciliumnetworkpolicies
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  {{- end }}
+
   # ==========================================================================
   # Events (for recording events)
   # ==========================================================================
