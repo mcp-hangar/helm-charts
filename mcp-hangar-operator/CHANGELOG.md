@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.4](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.3...mcp-hangar-operator-v0.12.4) (2026-07-21)
+
+
+### Fixed
+
+* **mcp-hangar-operator:** grant RBAC for CiliumNetworkPolicy so the Cilium egress flavor works ([#73](https://github.com/mcp-hangar/helm-charts/issues/73)) ([4b588c7](https://github.com/mcp-hangar/helm-charts/commit/4b588c78e19375d101af99f48b4bae7784a81869))
+
 ## [0.12.3](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.2...mcp-hangar-operator-v0.12.3) (2026-07-19)
 
 
