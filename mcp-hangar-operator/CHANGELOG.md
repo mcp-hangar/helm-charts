@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.5](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.4...mcp-hangar-operator-v0.12.5) (2026-07-27)
+
+
+### Fixed
+
+* **operator:** bump chart appVersion to 0.15.0 ([#76](https://github.com/mcp-hangar/helm-charts/issues/76)) ([b5acdf2](https://github.com/mcp-hangar/helm-charts/commit/b5acdf29d8ef82f71108e6d51a4cc1f3064a0c49))
+
 ## [0.12.4](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.3...mcp-hangar-operator-v0.12.4) (2026-07-21)
 
 
