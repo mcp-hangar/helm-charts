@@ -97,6 +97,18 @@ jobs:
           helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
+      # Render-only, and separate from ci-values.yaml on purpose: that file is
+      # also installed on kind, and a real replica set needs a shared database
+      # this workflow does not stand up. Rendering still proves the chart can
+      # express a supported cluster -- and the guards fail the render when any
+      # part of the shape is missing, so this step going green is the assertion.
+      - name: helm template (ci-cluster-values.yaml) | kubeconform
+        if: hashFiles(format('{0}/ci-cluster-values.yaml', matrix.chart)) != ''
+        run: |
+          set -euo pipefail
+          helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-cluster-values.yaml" \
+            | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
+
   # The crux: install each chart against its pinned appVersion image on a
   # real cluster and assert it actually works, not just that it renders.
   install-smoke:
@@ -175,13 +187,22 @@ jobs:
           helm test core -n core --logs
           echo "::endgroup::"
 
-          # Upgrade + rollback (#7): core has no leader-election, so
-          # bumping replicaCount is a real behavior change that --wait can
-          # safely gate on (contrast the operator below, where the same
-          # move would hang -- see #26).
-          echo "::group::helm upgrade core (replicaCount=2)"
+          # Upgrade + rollback (#7). This used to bump replicaCount to 2,
+          # justified by "core has no leader-election" -- true when it was
+          # written and false since 2.5.0. Two replicas without shared storage
+          # are two gateways, each with its own fleet, which is the exact shape
+          # the chart now refuses at render time; the refusal turned this step
+          # red, which is the guard working rather than a regression.
+          #
+          # A log-level change is the replacement: it rewrites the ConfigMap,
+          # so the checksum annotation moves and a genuine rollout happens for
+          # --wait to gate on -- without asking for a configuration that cannot
+          # be safe here. The multi-replica shape is covered by rendering
+          # ci-cluster-values.yaml, which is as far as it goes without a
+          # PostgreSQL this job does not stand up.
+          echo "::group::helm upgrade core (log level change, forces a rollout)"
           helm upgrade core ./mcp-hangar -n core --reuse-values --wait --timeout 300s \
-            --set replicaCount=2
+            --set config.logLevel=DEBUG
           echo "::endgroup::"
 
           echo "::group::GET /health/ready (post-upgrade)"

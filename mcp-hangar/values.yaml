@@ -90,12 +90,68 @@ config:
   # Leave this false and configure `auth` for any non-demo deployment.
   unsafeNoAuth: false
 
+# Storage, as one decision (core 2.5.0+). Leave `backend` empty to keep the
+# pre-2.5.0 behaviour, where each subsystem configured its own storage.
+#
+# A backend serves every persisted concern or the gateway refuses to start:
+# the event log and its delivery mark, server configuration, the audit trail,
+# saga state, approvals, API keys, roles, tool-access policies, metric history
+# and the management lease.
+persistence:
+  # "" | sqlite | postgresql
+  backend: ""
+
+  sqlite:
+    dataDir: /app/data
+    # The chart's `data` volume is an emptyDir by default, which means a pod
+    # restart loses the event log and the fleet. Turn this on for any
+    # deployment whose history matters.
+    persistentVolume:
+      enabled: false
+      size: 8Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+
+  postgresql:
+    host: ""
+    port: 5432
+    database: mcp_hangar
+    user: hangar
+    # Prefer `existingSecret`. A password set here is rendered into a
+    # ConfigMap, which is readable by anything that can read ConfigMaps.
+    password: ""
+    # A Secret holding the password. When set, the chart mounts it as
+    # HANGAR_DB_PASSWORD and the rendered config interpolates that instead.
+    existingSecret: ""
+    existingSecretKey: password
+
+# Declares that these replicas are meant to be ONE gateway rather than several
+# independent ones (core 2.5.0+). Required for more than one replica, and
+# refused on a backend the replicas cannot share.
+#
+# Exactly one replica holds the management lease and runs discovery, garbage
+# collection, TTL deregistration and metric snapshots. Every replica serves.
+coordination:
+  enabled: false
+  # Keep these IDENTICAL on every replica. The tenure in force is written by
+  # whichever replica holds the lease, from its own value -- so one stale
+  # ConfigMap sets the failover window for the whole set.
+  leaseTtlSeconds: 15
+  renewIntervalSeconds: 5
+  # Must be under leaseTtlSeconds.
+  renewDeadlineSeconds: 10
+
 # MCP servers configuration
 mcp_servers: {}
   # example:
   #   math:
-  #     mode: subprocess
-  #     command: ["python", "-m", "example_provider"]
+  #     mode: remote
+  #     endpoint: http://math.internal:8000/mcp
+  #
+  # `subprocess`, `docker` and `container` run the server as a child process of
+  # ONE gateway, so no peer can reach it. They are refused when
+  # `coordination.enabled` is true -- use `remote` for anything several
+  # replicas must serve.
 
 # Auth configuration, rendered into config.yaml's top-level `auth:` section.
 # Required for the server to bind HTTP on a non-loopback interface unless
