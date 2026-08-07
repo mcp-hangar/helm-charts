@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.13.11...mcp-hangar-v0.14.0) (2026-08-07)
+
+
+### Added
+
+* **hangar:** the chart can express a cluster, and refuses one it cannot ([#95](https://github.com/mcp-hangar/helm-charts/issues/95)) ([eeaebfc](https://github.com/mcp-hangar/helm-charts/commit/eeaebfc3a63114f5c8b86ca1044da5d8af0422a4))
+
+
+### Changed
+
+* **hangar:** let release-please own the chart version ([#97](https://github.com/mcp-hangar/helm-charts/issues/97)) ([1f07677](https://github.com/mcp-hangar/helm-charts/commit/1f07677e899d24513dfa01d686a4fce796ddd3d7))
+
 ## [0.13.11](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.13.10...mcp-hangar-v0.13.11) (2026-08-05)
 
 
