@@ -1,0 +1,38 @@
+# The multi-replica shape, for RENDER validation only.
+#
+# Deliberately not in `ci-values.yaml`: that file is also installed on kind,
+# and a real replica set needs a PostgreSQL this workflow does not stand up.
+# What matters here is that the chart can express a supported cluster and that
+# every guard lets this one through -- the refusals are covered by the guards
+# themselves failing the render when any piece is missing.
+replicaCount: 3
+
+# Explicit, because appVersion tracks the last stable core and these keys need
+# 2.5.0. A chart defaulting to a candidate would hand one to everybody.
+image:
+  tag: "2.5.0-rc.2"
+
+persistence:
+  backend: postgresql
+  postgresql:
+    host: postgres.data.svc.cluster.local
+    database: mcp_hangar
+    user: hangar
+    existingSecret: hangar-db
+    existingSecretKey: password
+
+coordination:
+  enabled: true
+  leaseTtlSeconds: 15
+  renewIntervalSeconds: 5
+  renewDeadlineSeconds: 10
+
+# `remote` is the only mode several replicas can serve.
+mcp_servers:
+  math:
+    mode: remote
+    endpoint: http://math.internal:8000/mcp
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

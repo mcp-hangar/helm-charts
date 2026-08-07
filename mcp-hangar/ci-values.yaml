@@ -1,8 +1,15 @@
 # Production-like values for CI dry-run testing.
 # This file is used in CI to validate template rendering with realistic
-# configuration. It is NOT intended for actual deployment.
-
-replicaCount: 2
+# configuration, and to install the chart on kind. It is NOT intended for
+# actual deployment.
+#
+# This said `replicaCount: 2` until the cluster guard was added, and CI both
+# rendered and installed it -- two gateways on emptyDir, each with its own
+# fleet and its own lease, which is the exact configuration that looks healthy
+# and disagrees with itself. A replica set needs a shared PostgreSQL, which
+# this file cannot stand up; `ci-cluster-values.yaml` covers that shape by
+# rendering it instead.
+replicaCount: 1
 
 config:
   mode: http

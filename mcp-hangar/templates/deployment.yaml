@@ -1,3 +1,8 @@
+{{/* Validated here as well as in the ConfigMap: today the checksum annotation
+     below pulls the ConfigMap in even when `configMap.create` is false, so the
+     guard happens to run either way. That is incidental -- this line makes it
+     deliberate, because a Deployment always renders. */}}
+{{- include "mcp-hangar.validateCluster" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -87,6 +92,23 @@ spec:
               value: {{ .Values.config.logLevel | quote }}
             - name: MCP_JSON_LOGS
               value: {{ .Values.config.jsonLogs | quote }}
+            {{- $p := .Values.persistence | default dict }}
+            {{- if and (eq (default "" $p.backend) "postgresql") $p.postgresql.existingSecret }}
+            - name: HANGAR_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $p.postgresql.existingSecret | quote }}
+                  key: {{ $p.postgresql.existingSecretKey | default "password" | quote }}
+            {{- end }}
+            {{- if gt (int .Values.replicaCount) 1 }}
+            # A recognisable identity per pod. It is a label, not the identity:
+            # a per-process suffix is always appended, so replicas rolled from
+            # one ConfigMap cannot end up sharing an id.
+            - name: HANGAR_INSTANCE_LABEL
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- end }}
       volumes:
         - name: config
           configMap:
@@ -94,7 +116,16 @@ spec:
         - name: tmp
           emptyDir: {}
         - name: data
+          {{- $sqlitePv := and (eq (default "" (.Values.persistence).backend) "sqlite") .Values.persistence.sqlite.persistentVolume.enabled }}
+          {{- if $sqlitePv }}
+          persistentVolumeClaim:
+            claimName: {{ include "mcp-hangar.fullname" . }}-data
+          {{- else }}
+          # An emptyDir loses the event log and the fleet on every pod restart.
+          # Durable history needs persistence.sqlite.persistentVolume.enabled,
+          # or postgresql.
           emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

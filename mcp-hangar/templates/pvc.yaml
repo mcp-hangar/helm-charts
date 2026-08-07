@@ -1,0 +1,23 @@
+{{- $p := .Values.persistence | default dict -}}
+{{- if and (eq (default "" $p.backend) "sqlite") $p.sqlite.persistentVolume.enabled -}}
+{{/*
+Only for the sqlite backend, and only one replica can use it: a file admits one
+writer, which is the property that makes sqlite the standalone choice. The
+cluster guard already refuses more than one replica on it.
+*/}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mcp-hangar.fullname" . }}-data
+  labels:
+    {{- include "mcp-hangar.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ $p.sqlite.persistentVolume.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ $p.sqlite.persistentVolume.size | default "8Gi" }}
+  {{- with $p.sqlite.persistentVolume.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+{{- end }}

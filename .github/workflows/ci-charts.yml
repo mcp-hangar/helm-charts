@@ -97,6 +97,18 @@ jobs:
           helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-values.yaml" \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
+      # Render-only, and separate from ci-values.yaml on purpose: that file is
+      # also installed on kind, and a real replica set needs a shared database
+      # this workflow does not stand up. Rendering still proves the chart can
+      # express a supported cluster -- and the guards fail the render when any
+      # part of the shape is missing, so this step going green is the assertion.
+      - name: helm template (ci-cluster-values.yaml) | kubeconform
+        if: hashFiles(format('{0}/ci-cluster-values.yaml', matrix.chart)) != ''
+        run: |
+          set -euo pipefail
+          helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-cluster-values.yaml" \
+            | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
+
   # The crux: install each chart against its pinned appVersion image on a
   # real cluster and assert it actually works, not just that it renders.
   install-smoke:
