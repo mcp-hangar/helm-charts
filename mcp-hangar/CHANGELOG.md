@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.2](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.1...mcp-hangar-v0.14.2) (2026-08-10)
+
+
+### Added
+
+* **hangar:** add extraEnv and extraEnvFrom to the mcp-hangar chart ([#105](https://github.com/mcp-hangar/helm-charts/issues/105)) ([f890d02](https://github.com/mcp-hangar/helm-charts/commit/f890d0267cd257a16fc957e14443a9cdc20133f3)), closes [#103](https://github.com/mcp-hangar/helm-charts/issues/103) [#102](https://github.com/mcp-hangar/helm-charts/issues/102)
+
+
+### Fixed
+
+* **hangar:** default the mcp-hangar chart to core image 2.5.1 ([#100](https://github.com/mcp-hangar/helm-charts/issues/100)) ([47ad5c8](https://github.com/mcp-hangar/helm-charts/commit/47ad5c8821d638b7ac4cbb5ff13f33f58a9ad462))
+* **hangar:** default the mcp-hangar chart to core image 2.5.2 ([#106](https://github.com/mcp-hangar/helm-charts/issues/106)) ([8939a80](https://github.com/mcp-hangar/helm-charts/commit/8939a80fb20b9023501aa7670b7e3ca8c9220208))
+
 ## [0.14.1](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.0...mcp-hangar-v0.14.1) (2026-08-09)
 
 
