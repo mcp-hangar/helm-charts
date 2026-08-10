@@ -220,6 +220,37 @@ networkPolicy:
   #     backends outside the release namespace, etc.)
   additionalEgress: []
 
+# ── Extra environment ──────────────────────────────────────────────────
+
+# Appended to the container's env, after everything the chart renders itself --
+# so an override wins where one is meant to.
+#
+# This exists because several settings core reads live ONLY in the environment,
+# with no config.yaml key. `MCP_TRUSTED_HOSTS` is the one that bites first: the
+# hardening guide calls replacing its dev default MANDATORY, and until this
+# value existed a chart install fronted by a Service or an Ingress answered
+# `400 Invalid host header` to everything with no way to fix it through Helm.
+#
+# `OTEL_EXPORTER_OTLP_ENDPOINT` is the other common one: tracing is on by
+# default and points at localhost:4317, so every pod logs a connection-refused
+# loop until it is redirected.
+#
+# Standard Kubernetes EnvVar entries, so `valueFrom` works -- which is what
+# anything credential-shaped needs.
+extraEnv: []
+  # - name: MCP_TRUSTED_HOSTS
+  #   value: "mcp-hangar.hangar.svc.cluster.local,hangar.example.com"
+  # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+  #   value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+  # - name: SOME_TOKEN
+  #   valueFrom:
+  #     secretKeyRef: {name: my-secret, key: token}
+
+# Whole ConfigMaps/Secrets as environment, the other half of the same need.
+extraEnvFrom: []
+  # - secretRef: {name: hangar-extra-env}
+  # - configMapRef: {name: hangar-extra-env}
+
 # ── Pod Disruption Budget ──────────────────────────────────────────────
 
 podDisruptionBudget:

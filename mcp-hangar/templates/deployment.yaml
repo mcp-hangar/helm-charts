@@ -109,6 +109,18 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             {{- end }}
+            {{- with .Values.extraEnv }}
+            {{/* Last, so an operator can override a value rendered above when
+                 they mean to. Several settings core reads exist ONLY in the
+                 environment -- MCP_TRUSTED_HOSTS is the one the hardening guide
+                 calls mandatory -- and without this the chart could not set
+                 them at all. */}}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: config
           configMap:
