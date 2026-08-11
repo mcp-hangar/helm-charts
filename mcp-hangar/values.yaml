@@ -156,6 +156,16 @@ mcp_servers: {}
 # Auth configuration, rendered into config.yaml's top-level `auth:` section.
 # Required for the server to bind HTTP on a non-loopback interface unless
 # config.unsafeNoAuth is set to true (demo/insecure only).
+#
+# Leaving this empty also decides two things beyond binding, from core 2.6.0:
+#   * per-tenant digest pins (`tool_projection.tenant_overrides.<t>.pins` on a
+#     server below) cannot be matched, because the tenant comes from the
+#     authenticated principal -- so the gateway REFUSES TO START rather than
+#     enforce nothing. Pin with the all-tenants `tool_projection.pins:` block
+#     instead, which holds an anonymous caller.
+#   * the `hangar_*` management tools are not authorized, exactly as every other
+#     call is not. With auth on they require the same permissions their REST
+#     equivalents do.
 auth: {}
 
 # Prometheus ServiceMonitor
