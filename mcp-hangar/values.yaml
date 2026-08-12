@@ -113,6 +113,25 @@ config:
   # either an `auth` block is configured below or this is set to true.
   # Leave this false and configure `auth` for any non-demo deployment.
   unsafeNoAuth: false
+  # Host headers this gateway will answer. Renders MCP_TRUSTED_HOSTS, which
+  # core reads from the environment only -- there is no config.yaml key for it.
+  #
+  # Left empty the gateway keeps its DEVELOPMENT default,
+  # `localhost,127.0.0.1,::1,testserver`, and answers `400 Invalid host header`
+  # to everything arriving through a Service or an Ingress. Cookbook 23 calls
+  # replacing it mandatory for a hardened deployment; this is that setting.
+  #
+  # Include every name a client may use to reach the gateway -- the in-cluster
+  # Service DNS name as well as any external hostname. If ingress.enabled is
+  # true, every host in ingress.hosts must appear here or the render fails.
+  #
+  # An MCP_TRUSTED_HOSTS entry in extraEnv still wins: extraEnv is appended
+  # last, so the escape hatch stays the override.
+  #
+  #   trustedHosts:
+  #     - mcp-hangar.hangar.svc.cluster.local
+  #     - hangar.example.com
+  trustedHosts: []
 
 # Storage, as one decision (core 2.5.0+). Leave `backend` empty to keep the
 # pre-2.5.0 behaviour, where each subsystem configured its own storage.

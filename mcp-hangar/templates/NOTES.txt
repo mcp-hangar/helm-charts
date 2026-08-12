@@ -5,6 +5,23 @@ EITHER a configured `auth:` block (see values.yaml `auth`) OR
 `config.unsafeNoAuth=true` (demo/insecure only) is set. With both left at
 their secure defaults, the pod will not become Ready.
 
+{{- if and .Values.ingress.enabled (not .Values.config.trustedHosts) }}
+{{- $viaExtraEnv := false }}
+{{- range .Values.extraEnv }}{{- if eq .name "MCP_TRUSTED_HOSTS" }}{{- $viaExtraEnv = true }}{{- end }}{{- end }}
+{{- if not $viaExtraEnv }}
+
+WARNING: an Ingress is enabled and no trusted hosts are configured. Hangar keeps
+its development default (localhost,127.0.0.1,::1,testserver) and will answer
+every request arriving through the Ingress with `400 Invalid host header` -- from
+a pod that is Ready, with nothing else wrong in its logs. Set:
+
+  config:
+    trustedHosts:
+{{- range .Values.ingress.hosts }}
+      - {{ .host }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- if gt (int .Values.replicaCount) 1 }}
 {{- if ne (.Values.service.sessionAffinity | default "None") "ClientIP" }}
 

@@ -145,6 +145,7 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | service.sessionAffinity | string | `ClientIP` | Pins a caller to one replica. An MCP session lives in one pod's memory, so round-robin (`None`) breaks most requests when `replicaCount > 1` |
 | service.sessionAffinityConfig.clientIP.timeoutSeconds | int | `10800` | How long the pin survives idle time |
 | config.logLevel | string | `INFO` | Log level |
+| config.trustedHosts | list | `[]` | Host headers the gateway answers, rendered as `MCP_TRUSTED_HOSTS`. Empty keeps core's **development** default, which answers `400 Invalid host header` through a Service or Ingress |
 | config.jsonLogs | bool | `true` | Enable JSON logging |
 | mcp_servers | object | `{}` | MCP server configurations |
 | persistence.backend | string | `""` | `sqlite`, `postgresql`, or empty for the pre-2.5.0 per-subsystem behaviour |
