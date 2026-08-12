@@ -103,6 +103,8 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | image.tag | string | `""` | Image tag (defaults to appVersion) |
 | service.type | string | `ClusterIP` | Service type |
 | service.port | int | `8080` | Service port |
+| service.sessionAffinity | string | `ClientIP` | Pins a caller to one replica. An MCP session lives in one pod's memory, so round-robin (`None`) breaks most requests when `replicaCount > 1` |
+| service.sessionAffinityConfig.clientIP.timeoutSeconds | int | `10800` | How long the pin survives idle time |
 | config.logLevel | string | `INFO` | Log level |
 | config.jsonLogs | bool | `true` | Enable JSON logging |
 | mcp_servers | object | `{}` | MCP server configurations |

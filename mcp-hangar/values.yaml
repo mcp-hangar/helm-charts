@@ -38,6 +38,30 @@ securityContext:
 service:
   type: ClusterIP
   port: 8080
+  # An MCP Streamable HTTP session lives in ONE replica's memory. A round-robin
+  # Service therefore hands the second request of a session to a pod that never
+  # saw the first, which answers "Session not found" -- measured at 13 of 15
+  # attempts on replicaCount: 3. Defaulted ON because the failure is the common
+  # case, not the rare one, and an operator who has to discover this setting has
+  # already shipped a broken deployment.
+  #
+  # Limits worth knowing before you rely on it:
+  #   * this is kube-proxy behaviour, so it does nothing for traffic that skips
+  #     the Service -- an Ingress controller routing straight to pod IPs, which
+  #     several do by default;
+  #   * it keys on the source address AS THE SERVICE SEES IT, so behind a proxy
+  #     that does not preserve the client address every session lands on one
+  #     backend: affinity holds, balance does not;
+  #   * it does not survive a rolling restart or a scale-down -- the owning pod
+  #     goes away and the session goes with it.
+  #
+  # Set to None for round-robin, deliberately.
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      # Kubernetes' own default. Raise it for sessions that idle longer than
+      # three hours; the affinity expires on idle time, not on session end.
+      timeoutSeconds: 10800
 
 ingress:
   enabled: false
