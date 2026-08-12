@@ -5,6 +5,24 @@ EITHER a configured `auth:` block (see values.yaml `auth`) OR
 `config.unsafeNoAuth=true` (demo/insecure only) is set. With both left at
 their secure defaults, the pod will not become Ready.
 
+{{- if gt (int .Values.replicaCount) 1 }}
+{{- if ne (.Values.service.sessionAffinity | default "None") "ClientIP" }}
+
+WARNING: replicaCount is {{ .Values.replicaCount }} and service.sessionAffinity is {{ .Values.service.sessionAffinity | default "None" }}.
+An MCP Streamable HTTP session lives in one replica's memory, so a round-robin
+Service will send the second request of a session to a pod that never saw the
+first, and most MCP requests will fail with "Session not found". Set
+service.sessionAffinity to ClientIP unless you are pinning sessions elsewhere.
+{{- else if .Values.ingress.enabled }}
+
+NOTE: service.sessionAffinity is ClientIP, which pins a caller to one replica --
+but it is kube-proxy behaviour, so it does not apply to traffic that skips the
+Service. Several Ingress controllers route straight to pod IPs by default. If
+yours does, pin sessions at the Ingress too (a client-address hash), or MCP
+requests will still fail with "Session not found".
+{{- end }}
+{{- end }}
+
 Get the application URL:
 
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "mcp-hangar.fullname" . }} 8080:{{ .Values.service.port }}
