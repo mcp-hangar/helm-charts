@@ -92,6 +92,14 @@ spec:
               value: {{ .Values.config.logLevel | quote }}
             - name: MCP_JSON_LOGS
               value: {{ .Values.config.jsonLogs | quote }}
+            {{- with .Values.config.trustedHosts }}
+            {{/* Rendered BEFORE extraEnv on purpose: extraEnv is appended last
+                 and wins by last-one-wins, so an operator who sets both keeps
+                 the escape hatch as the override rather than discovering that
+                 a named value silently outranks it. */}}
+            - name: MCP_TRUSTED_HOSTS
+              value: {{ join "," . | quote }}
+            {{- end }}
             {{- $p := .Values.persistence | default dict }}
             {{- if and (eq (default "" $p.backend) "postgresql") $p.postgresql.existingSecret }}
             - name: HANGAR_DB_PASSWORD

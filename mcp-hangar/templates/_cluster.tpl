@@ -66,4 +66,18 @@ The one rule core cannot enforce is the first: it never sees `replicaCount`.
 {{- if and (eq $backend "postgresql") (not $p.postgresql.host) -}}
   {{- fail "\n\npersistence.backend is postgresql but persistence.postgresql.host is empty.\n" -}}
 {{- end -}}
+
+{{/* An ingress host that is not trusted answers 400 to every request through
+     it. Only checked when trustedHosts is SET: unset keeps today's behaviour,
+     because failing there would break every existing install that supplies the
+     variable through extraEnv. That case gets a NOTES.txt warning instead. */}}
+{{- $trusted := .Values.config.trustedHosts | default list -}}
+{{- if and $trusted .Values.ingress.enabled -}}
+  {{- range .Values.ingress.hosts -}}
+    {{- $h := .host -}}
+    {{- if and $h (not (has $h $trusted)) -}}
+      {{- fail (printf "\n\ningress host %q is not in config.trustedHosts.\n\nHangar rejects a Host header it does not trust, so every request arriving\nthrough that ingress would be answered `400 Invalid host header` -- by a pod\nthat is Ready, with nothing wrong in its logs beyond the 400 itself.\n\nAdd %q to config.trustedHosts, or drop the host from ingress.hosts.\n" $h $h) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 {{- end -}}
