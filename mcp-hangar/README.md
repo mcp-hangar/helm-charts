@@ -92,6 +92,45 @@ Two costs worth knowing before the rollout: rate limits are counted per
 instance (a fleet-wide cap belongs at the ingress), and anything travelling by
 the shared log reaches peers within a poll interval rather than immediately.
 
+#### MCP clients need sticky routing, on every hop
+
+An MCP Streamable HTTP session lives in **one replica's memory**. Nothing shares
+it — the gateway writes no session to the database — so a request routed to a
+different pod than the one that ran `initialize` is answered `Session not
+found`. On three replicas without pinning, most requests fail.
+
+The chart pins the Service for you: `service.sessionAffinity` defaults to
+`ClientIP`. That is enough for callers reaching the Service directly.
+
+**An Ingress needs pinning of its own.** Service affinity is kube-proxy
+behaviour, and an ingress controller that routes straight to pod endpoints never
+goes through kube-proxy — so the Service setting does nothing for that traffic.
+For ingress-nginx:
+
+```yaml
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+```
+
+Use the hash, not the usual cookie-affinity recommendation
+(`nginx.ingress.kubernetes.io/affinity: cookie`): an MCP client is not a browser
+and will not carry the cookie back.
+
+Two limits that remain after both hops are pinned, because pinning is a
+mitigation rather than a fix:
+
+- **Affinity keys on the source address as the proxy sees it.** Behind anything
+  that does not preserve the client address, every session hashes to one
+  backend — the pin holds, the balance does not.
+- **A pin does not survive the pod.** A rolling restart or a scale-down takes
+  the owning replica away and the session with it; the client has to start over.
+
+The durable answer is shared session state in core, tracked at
+[mcp-hangar#877](https://github.com/mcp-hangar/mcp-hangar/issues/877). Until
+that lands, sticky routing is a standing requirement, not a workaround.
+
 Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook/25-multiple-replicas).
 
 ## Values
