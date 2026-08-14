@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.4...mcp-hangar-v0.15.0) (2026-08-14)
+
+
+### Added
+
+* **hangar:** stop pinning sessions, they no longer exist ([#136](https://github.com/mcp-hangar/helm-charts/issues/136)) ([a8d0220](https://github.com/mcp-hangar/helm-charts/commit/a8d0220d35e60191a2634d124618b269b6d265e3))
+
 ## [0.14.4](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.3...mcp-hangar-v0.14.4) (2026-08-14)
 
 
