@@ -63,16 +63,9 @@ service:
       # three hours; the affinity expires on idle time, not on session end.
       timeoutSeconds: 10800
 
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: mcp-hangar.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
+# No `ingress:` block: this chart renders no Ingress and never did. Bring your
+# own -- the chart owns the Service, and an Ingress that needs sticky routing
+# needs annotations only its own manifest can carry (see README).
 
 resources:
   limits:
@@ -122,8 +115,8 @@ config:
   # replacing it mandatory for a hardened deployment; this is that setting.
   #
   # Include every name a client may use to reach the gateway -- the in-cluster
-  # Service DNS name as well as any external hostname. If ingress.enabled is
-  # true, every host in ingress.hosts must appear here or the render fails.
+  # Service DNS name as well as any external hostname an Ingress or load
+  # balancer in front of it answers on.
   #
   # An MCP_TRUSTED_HOSTS entry in extraEnv still wins: extraEnv is appended
   # last, so the escape hatch stays the override.

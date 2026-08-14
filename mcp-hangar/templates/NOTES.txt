@@ -5,23 +5,6 @@ EITHER a configured `auth:` block (see values.yaml `auth`) OR
 `config.unsafeNoAuth=true` (demo/insecure only) is set. With both left at
 their secure defaults, the pod will not become Ready.
 
-{{- if and .Values.ingress.enabled (not .Values.config.trustedHosts) }}
-{{- $viaExtraEnv := false }}
-{{- range .Values.extraEnv }}{{- if eq .name "MCP_TRUSTED_HOSTS" }}{{- $viaExtraEnv = true }}{{- end }}{{- end }}
-{{- if not $viaExtraEnv }}
-
-WARNING: an Ingress is enabled and no trusted hosts are configured. Hangar keeps
-its development default (localhost,127.0.0.1,::1,testserver) and will answer
-every request arriving through the Ingress with `400 Invalid host header` -- from
-a pod that is Ready, with nothing else wrong in its logs. Set:
-
-  config:
-    trustedHosts:
-{{- range .Values.ingress.hosts }}
-      - {{ .host }}
-{{- end }}
-{{- end }}
-{{- end }}
 {{- if gt (int .Values.replicaCount) 1 }}
 {{- if ne (.Values.service.sessionAffinity | default "None") "ClientIP" }}
 
@@ -30,13 +13,13 @@ An MCP Streamable HTTP session lives in one replica's memory, so a round-robin
 Service will send the second request of a session to a pod that never saw the
 first, and most MCP requests will fail with "Session not found". Set
 service.sessionAffinity to ClientIP unless you are pinning sessions elsewhere.
-{{- else if .Values.ingress.enabled }}
+{{- else }}
 
 NOTE: service.sessionAffinity is ClientIP, which pins a caller to one replica --
 but it is kube-proxy behaviour, so it does not apply to traffic that skips the
 Service. Several Ingress controllers route straight to pod IPs by default. If
-yours does, pin sessions at the Ingress too (a client-address hash), or MCP
-requests will still fail with "Session not found".
+you front this release with one, pin sessions there too (a client-address
+hash), or MCP requests will still fail with "Session not found".
 {{- end }}
 {{- end }}
 

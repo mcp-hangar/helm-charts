@@ -105,14 +105,34 @@ The chart pins the Service for you: `service.sessionAffinity` defaults to
 **An Ingress needs pinning of its own.** Service affinity is kube-proxy
 behaviour, and an ingress controller that routes straight to pod endpoints never
 goes through kube-proxy — so the Service setting does nothing for that traffic.
-For ingress-nginx:
+
+This chart renders no Ingress; bring your own, and put the pinning annotation on
+it. For ingress-nginx:
 
 ```yaml
-ingress:
-  enabled: true
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-hangar
   annotations:
     nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: hangar.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-hangar        # the chart's Service
+                port:
+                  number: 8080
 ```
+
+Every host served this way must also be in `config.trustedHosts`, or the
+gateway answers `400 Invalid host header` from a pod that is Ready.
 
 Use the hash, not the usual cookie-affinity recommendation
 (`nginx.ingress.kubernetes.io/affinity: cookie`): an MCP client is not a browser
