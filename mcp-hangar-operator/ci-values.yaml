@@ -14,8 +14,6 @@ operator:
   gracefulShutdown:
     timeout: "10s"
     terminationGracePeriodSeconds: 15
-  reconcile:
-    maxConcurrentReconciles: 10
 
 webhook:
   enabled: true

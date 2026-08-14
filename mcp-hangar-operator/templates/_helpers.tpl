@@ -73,17 +73,6 @@ Create the name of the credentials secret
 {{- end }}
 
 {{/*
-Leader election namespace
-*/}}
-{{- define "mcp-hangar-operator.leaderElectionNamespace" -}}
-{{- if .Values.operator.leaderElection.namespace }}
-{{- .Values.operator.leaderElection.namespace }}
-{{- else }}
-{{- .Release.Namespace }}
-{{- end }}
-{{- end }}
-
-{{/*
 Whether webhook infrastructure (cert, service, volume mounts) is needed.
 True when either admission webhooks or CRD conversion webhooks are enabled.
 */}}
