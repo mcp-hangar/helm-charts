@@ -1,9 +1,11 @@
 {{- if .Values.dashboards.enabled }}
 {{- /*
   One ConfigMap per Grafana dashboard, labeled for the Grafana sidecar to
-  auto-import. Dashboards are the single source of truth in files/dashboards/
-  (mirrored from the repo's monitoring/ stack). .Files.Get inserts the JSON
-  verbatim, so Grafana legend templates ({{`{{label}}`}}) pass through untouched.
+  auto-import. The dashboards shipped on a cluster are OWNED by
+  files/dashboards/ in this repo -- core's monitoring/ stack is the compose/dev
+  copy, not an upstream these are generated from (issue #126). .Files.Get
+  inserts the JSON verbatim, so Grafana legend templates ({{`{{label}}`}}) pass
+  through untouched.
 */}}
 {{- range $path, $_ := .Files.Glob "files/dashboards/*.json" }}
 {{- $name := trimSuffix ".json" (base $path) }}
