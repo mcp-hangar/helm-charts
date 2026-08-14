@@ -60,7 +60,7 @@ mcp-hangar/
     ├── _cluster.tpl      # Render-time guards for the multi-replica shape
     ├── NOTES.txt         # Post-install instructions
     ├── deployment.yaml
-    ├── service.yaml      # ClusterIP Service (sessionAffinity: ClientIP)
+    ├── service.yaml      # ClusterIP Service (sessionAffinity: None)
     ├── configmap.yaml    # config.yaml, mounted into the pod
     ├── pvc.yaml          # Optional PVC for the sqlite backend
     ├── serviceaccount.yaml
@@ -91,7 +91,7 @@ image:
 service:
   type: ClusterIP
   port: 8080
-  sessionAffinity: ClientIP   # MCP sessions live in one replica's memory
+  sessionAffinity: None       # no MCP session to pin, from appVersion 2.7.0
 
 config:
   port: 8080

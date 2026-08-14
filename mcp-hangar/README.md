@@ -92,64 +92,43 @@ Two costs worth knowing before the rollout: rate limits are counted per
 instance (a fleet-wide cap belongs at the ingress), and anything travelling by
 the shared log reaches peers within a poll interval rather than immediately.
 
-#### MCP clients need sticky routing, on every hop
+#### Sticky routing: no longer required, from appVersion 2.7.0
 
-An MCP Streamable HTTP session lives in **one replica's memory**. Nothing shares
-it — the gateway writes no session to the database — so a request routed to a
-different pod than the one that ran `initialize` is answered `Session not
-found`. On three replicas without pinning, most requests fail.
+A gateway older than 2.7.0 kept each MCP Streamable HTTP session in **one
+replica's memory**, so a request routed to a different pod than the one that ran
+`initialize` was answered `Session not found` — most requests, on three replicas
+without pinning. The chart pinned the Service for you and told you to pin your
+ingress as well.
 
-The chart pins the Service for you: `service.sessionAffinity` defaults to
-`ClientIP`. That is enough for callers reaching the Service directly.
+From 2.7.0 the gateway serves the transport without a session at all
+([mcp-hangar#877](https://github.com/mcp-hangar/mcp-hangar/issues/877)). Every
+replica can answer every request, a rolling restart costs a client nothing, and
+`service.sessionAffinity` therefore defaults to `None`. A `ClientIP` pin is now
+only a cost: it keys on the source address as the Service sees it, so behind a
+proxy that does not preserve the client address it lands everything on one pod.
 
-**An Ingress needs pinning of its own.** Service affinity is kube-proxy
-behaviour, and an ingress controller that routes straight to pod endpoints never
-goes through kube-proxy — so the Service setting does nothing for that traffic.
-
-This chart renders no Ingress; bring your own, and put the pinning annotation on
-it. For ingress-nginx:
+**Set `service.sessionAffinity: ClientIP` if you pin `image.tag` to a gateway
+older than 2.7.0**, and pin your ingress too — Service affinity is kube-proxy
+behaviour and does nothing for a controller that routes straight to pod
+endpoints. For ingress-nginx that is
 
 ```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: mcp-hangar
-  annotations:
-    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: hangar.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: mcp-hangar        # the chart's Service
-                port:
-                  number: 8080
+nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
 ```
 
-Every host served this way must also be in `config.trustedHosts`, or the
-gateway answers `400 Invalid host header` from a pod that is Ready.
+— the hash rather than the usual cookie affinity, because an MCP client is not a
+browser and will not carry the cookie back. Neither hop's pin survives a rolling
+restart, which is why the gateway stopped needing them rather than the chart
+getting better at arranging them.
 
-Use the hash, not the usual cookie-affinity recommendation
-(`nginx.ingress.kubernetes.io/affinity: cookie`): an MCP client is not a browser
-and will not carry the cookie back.
+The chart cannot read a version out of a tag, so `NOTES.txt` asks at install time
+when `replicaCount > 1` and `image.tag` is set.
 
-Two limits that remain after both hops are pinned, because pinning is a
-mitigation rather than a fix:
+One thing clients can notice on 2.7.0: `DELETE /mcp` answers `405`, because there
+is no session to terminate.
 
-- **Affinity keys on the source address as the proxy sees it.** Behind anything
-  that does not preserve the client address, every session hashes to one
-  backend — the pin holds, the balance does not.
-- **A pin does not survive the pod.** A rolling restart or a scale-down takes
-  the owning replica away and the session with it; the client has to start over.
-
-The durable answer is shared session state in core, tracked at
-[mcp-hangar#877](https://github.com/mcp-hangar/mcp-hangar/issues/877). Until
-that lands, sticky routing is a standing requirement, not a workaround.
+Whatever host you serve must also be in `config.trustedHosts`, or the gateway
+answers `400 Invalid host header` from a pod that is Ready.
 
 Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook/25-multiple-replicas).
 
@@ -162,8 +141,8 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | image.tag | string | `""` | Image tag (defaults to appVersion) |
 | service.type | string | `ClusterIP` | Service type |
 | service.port | int | `8080` | Service port |
-| service.sessionAffinity | string | `ClientIP` | Pins a caller to one replica. An MCP session lives in one pod's memory, so round-robin (`None`) breaks most requests when `replicaCount > 1` |
-| service.sessionAffinityConfig.clientIP.timeoutSeconds | int | `10800` | How long the pin survives idle time |
+| service.sessionAffinity | string | `None` | Round-robin. From appVersion 2.7.0 the gateway keeps no MCP session, so replicas are interchangeable. Set `ClientIP` only if `image.tag` names a gateway older than 2.7.0 |
+| service.sessionAffinityConfig.clientIP.timeoutSeconds | int | `10800` | How long the pin survives idle time. Rendered only when `sessionAffinity` is `ClientIP` — Kubernetes rejects it otherwise |
 | config.logLevel | string | `INFO` | Log level |
 | config.trustedHosts | list | `[]` | Host headers the gateway answers, rendered as `MCP_TRUSTED_HOSTS`. Empty keeps core's **development** default, which answers `400 Invalid host header` through a Service or Ingress |
 | config.jsonLogs | bool | `true` | Enable JSON logging |
