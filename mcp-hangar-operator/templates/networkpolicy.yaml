@@ -20,9 +20,10 @@ spec:
         - port: {{ .Values.operator.health.port }}
           protocol: TCP
     {{- if and .Values.webhook.enabled }}
-    # Allow webhook traffic from API server
+    # Allow webhook traffic from API server. 9443 is what controller-runtime
+    # binds and the image cannot be told otherwise (issue #122).
     - ports:
-        - port: {{ .Values.webhook.port }}
+        - port: 9443
           protocol: TCP
     {{- end }}
     {{- if .Values.networkPolicy.allowMonitoring }}
