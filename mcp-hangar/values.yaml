@@ -214,7 +214,7 @@ serviceMonitor:
   labels: {}
 
 # ── Prometheus alerting rules ──────────────────────────────────────────────
-# Ships the maintained application alert rules (28 alerts across critical/
+# Ships the maintained application alert rules (30 alerts across critical/
 # warning/info/governance/availability groups) as a PrometheusRule CR. Requires
 # the Prometheus Operator CRDs (monitoring.coreos.com/v1); enabling without them
 # fails the render with a clear message. Off by default; turn on where Prometheus
