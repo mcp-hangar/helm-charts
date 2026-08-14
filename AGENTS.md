@@ -11,9 +11,10 @@
 
 ## Commands
 
-```bash
-cd packages/helm-charts
+Run everything from the repository root -- this repo *is* the charts repo,
+there is no `packages/` prefix.
 
+```bash
 # Lint
 helm lint mcp-hangar
 helm lint mcp-hangar-operator
@@ -21,6 +22,11 @@ helm lint mcp-hangar-operator
 # Template (dry-run render)
 helm template my-release mcp-hangar
 helm template my-release mcp-hangar-operator
+
+# Render the shapes CI renders (see .github/workflows/ci-charts.yml)
+helm template t mcp-hangar -f mcp-hangar/ci-values.yaml
+helm template t mcp-hangar -f mcp-hangar/ci-cluster-values.yaml
+helm template t mcp-hangar-operator -f mcp-hangar-operator/ci-values.yaml
 
 # Install (to cluster)
 helm install mcp-hangar ./mcp-hangar --namespace mcp-hangar --create-namespace
@@ -41,22 +47,39 @@ Application chart for deploying MCP Hangar core (Python backend).
 
 ```
 mcp-hangar/
-├── Chart.yaml          # Chart metadata (version, appVersion, kubeVersion)
-├── values.yaml         # Default configuration values
+├── Chart.yaml            # Chart metadata (version, appVersion, kubeVersion)
+├── values.yaml           # Default configuration values
+├── ci-values.yaml        # Single-replica shape, rendered and installed in CI
+├── ci-cluster-values.yaml# Multi-replica shape, RENDER validation only
 ├── README.md
+├── files/                # Shipped payloads (.Files.Get)
+│   ├── dashboards/       # 4 Grafana dashboards
+│   └── prometheus-alerts.yaml
 └── templates/
-    ├── _helpers.tpl     # Template helpers (labels, names, selectors)
-    ├── NOTES.txt        # Post-install instructions
-    ├── deployment.yaml  # MCP Hangar Deployment
-    ├── service.yaml     # ClusterIP Service
-    ├── configmap.yaml   # Configuration (mounted as config.yaml)
+    ├── _helpers.tpl      # Template helpers (labels, names, selectors)
+    ├── _cluster.tpl      # Render-time guards for the multi-replica shape
+    ├── NOTES.txt         # Post-install instructions
+    ├── deployment.yaml
+    ├── service.yaml      # ClusterIP Service (sessionAffinity: ClientIP)
+    ├── configmap.yaml    # config.yaml, mounted into the pod
+    ├── pvc.yaml          # Optional PVC for the sqlite backend
     ├── serviceaccount.yaml
-    ├── servicemonitor.yaml  # Prometheus ServiceMonitor
-    ├── hpa.yaml         # HorizontalPodAutoscaler
-    └── tests/           # Helm test hooks
+    ├── networkpolicy.yaml
+    ├── poddisruptionbudget.yaml
+    ├── servicemonitor.yaml   # Prometheus ServiceMonitor
+    ├── prometheusrule.yaml   # Alert rules from files/
+    ├── dashboards.yaml       # Dashboard ConfigMaps from files/
+    ├── hpa.yaml
+    └── tests/                # Helm test hooks
 ```
 
+There is no `templates/ingress.yaml`. Bring your own Ingress; the chart owns
+the Service.
+
 ### Key Values
+
+Abridged -- `values.yaml` is the reference and carries the reasoning in
+comments.
 
 ```yaml
 replicaCount: 1
@@ -65,15 +88,32 @@ image:
   tag: ""  # defaults to appVersion
   pullPolicy: IfNotPresent
 
-config:
-  providers: {}  # Provider configuration (injected into ConfigMap)
-  logging:
-    level: INFO
-    json_format: true
-
 service:
   type: ClusterIP
-  port: 8000
+  port: 8080
+  sessionAffinity: ClientIP   # MCP sessions live in one replica's memory
+
+config:
+  port: 8080
+  logLevel: INFO
+  jsonLogs: true
+  unsafeNoAuth: false   # demo only; otherwise configure `auth`
+  trustedHosts: []      # renders MCP_TRUSTED_HOSTS; the dev default 400s
+
+# Backend MCP servers the gateway fronts. Top level, NOT under `config`.
+mcp_servers: {}
+  # math:
+  #   mode: remote
+  #   endpoint: http://math.internal:8000/mcp
+
+auth: {}
+
+persistence:
+  backend: ""           # "" | sqlite | postgresql (core 2.5.0+)
+coordination:
+  enabled: false        # required for more than one replica
+
+extraEnv: []            # appended last, so it wins
 
 resources:
   requests:
@@ -83,10 +123,21 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+networkPolicy:
+  enabled: true
 serviceMonitor:
   enabled: false
-  interval: 30s
+prometheusRule:
+  enabled: false
+dashboards:
+  enabled: false
 ```
+
+`persistence`, `coordination` and `mcp_servers` are cross-checked at render
+time by `templates/_cluster.tpl`: replicas without a shared backend, a
+coordinated release running a subprocess-mode server, a `renewDeadlineSeconds`
+that is not under the lease TTL and similar combinations fail `helm template`
+rather than the pod.
 
 ## Chart: mcp-hangar-operator
 
@@ -96,19 +147,31 @@ Operator chart for deploying the Kubernetes operator.
 mcp-hangar-operator/
 ├── Chart.yaml
 ├── values.yaml
+├── ci-values.yaml
 └── templates/
     ├── _helpers.tpl
     ├── NOTES.txt
-    ├── deployment.yaml        # Operator Deployment
-    ├── service.yaml           # Metrics service
+    ├── deployment.yaml
+    ├── service.yaml                        # Metrics service
+    ├── webhook-service.yaml
+    ├── validatingwebhookconfiguration.yaml
+    ├── certificate.yaml                    # cert-manager Certificate/Issuer
     ├── serviceaccount.yaml
-    ├── clusterrole.yaml       # RBAC for operator
+    ├── clusterrole.yaml                    # RBAC for operator
     ├── clusterrolebinding.yaml
-    ├── secret.yaml            # Optional secrets
-    ├── servicemonitor.yaml    # Prometheus ServiceMonitor
-    ├── crds/                  # CRD templates, gated by values.crds.install
+    ├── secret.yaml                         # Optional secrets
+    ├── networkpolicy.yaml
+    ├── poddisruptionbudget.yaml
+    ├── servicemonitor.yaml
+    ├── prometheusrule.yaml
+    ├── crds/                               # CRD templates, gated by values.crds.install
     └── tests/
 ```
+
+Main value groups: `operator.*` (log level, metrics port, health port, leader
+election, graceful shutdown), `hangar.*` (gateway URL and API key), `webhook.*`
+(admission webhooks, cert-manager wiring, failure policy) and `crds.*`
+(install/keep/conversion).
 
 ### CRDs
 
@@ -120,10 +183,11 @@ templated CRD carries `helm.sh/resource-policy: keep` (toggled by
 `values.crds.keep`) so `helm uninstall` does not cascade-delete CRDs and the
 custom resources under them. When operator CRD types change:
 
-1. Regenerate in the `operator` repo: `make manifests`
+1. Regenerate in the `mcp-hangar-operator` repo: `make manifests`
 2. Copy from `operator/config/crd/bases/` into `mcp-hangar-operator/templates/crds/`,
-   wrapping each with the `{{- if .Values.crds.install }}` guard and the
-   `helm.sh/resource-policy: keep` annotation used by the existing files
+   wrapping each with the `{{- if .Values.crds.install }}` guard, the
+   `helm.sh/resource-policy: keep` annotation and the conversion stanza used by
+   the existing files
 3. Verify with `helm lint mcp-hangar-operator`
 
 ## Conventions
@@ -149,6 +213,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 - Use `""` (empty string) as default for optional strings
 - Use `{}` as default for optional objects
 - Boolean feature flags: `enabled: false` pattern
+- A value the templates never read is a lie; delete the key instead of
+  carrying it
 
 ### NOTES.txt
 
@@ -160,13 +226,19 @@ Update `NOTES.txt` when adding new features. It should contain:
 ### Versioning
 
 - `version` in Chart.yaml tracks chart changes
-- `appVersion` in Chart.yaml tracks the application version
-- Keep both in sync with core package version (currently 0.11.0)
+- `appVersion` in Chart.yaml tracks the application version, and deliberately
+  tracks the last STABLE release -- never a candidate
+- Do not hardcode version numbers in docs. The current numbers live in each
+  chart's `Chart.yaml`; the supported combinations live in the
+  [release compatibility matrix](https://github.com/mcp-hangar/docs/blob/main/operations/RELEASE_COMPATIBILITY.md),
+  which is the single source of truth (ADR-011)
 
 ## Dependencies on Other Subprojects
 
-- **core**: `mcp-hangar` chart deploys the core Python application; image tag must match
-- **operator**: `mcp-hangar-operator` chart deploys the Go operator; CRD manifests sourced from operator build
+- **core**: `mcp-hangar` chart deploys the core Python application; `appVersion`
+  names the image tag
+- **operator**: `mcp-hangar-operator` chart deploys the Go operator; CRD
+  manifests are copied from the operator build
 
 ## What NOT to Do
 
@@ -175,4 +247,3 @@ Update `NOTES.txt` when adding new features. It should contain:
 - No `helm.sh/hook` unless truly needed (operator CRDs use `templates/crds/`, gated by `values.crds.install`, instead)
 - No secrets in `values.yaml` defaults -- use external secret management
 - No emoji in comments or NOTES.txt
-

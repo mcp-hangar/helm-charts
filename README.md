@@ -73,7 +73,7 @@ The core application chart for the MCP Hangar server.
 Key configuration options in `values.yaml`:
 - `replicaCount`: Number of server instances.
 - `image`: Container image repository and tag.
-- `config.mcp_servers`: Backend MCP servers the gateway fronts.
+- `mcp_servers`: Backend MCP servers the gateway fronts (top level, not under `config`).
 - `config.unsafeNoAuth` / `auth`: bind without auth (demo) or configure OIDC/API-key auth.
 - `service`: Service type and port configuration.
 - `resources`: Pod resource requests and limits.
