@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.7](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.6...mcp-hangar-operator-v0.12.7) (2026-08-14)
+
+
+### Fixed
+
+* **operator:** default the operator chart to image 0.15.2 ([#118](https://github.com/mcp-hangar/helm-charts/issues/118)) ([39d529b](https://github.com/mcp-hangar/helm-charts/commit/39d529b20100e2a89e322c5f85e2d5f49b77dc45))
+* **operator:** hardcode the webhook port at 9443 ([#133](https://github.com/mcp-hangar/helm-charts/issues/133)) ([bb09533](https://github.com/mcp-hangar/helm-charts/commit/bb0953376694796ada365c71a4511796af00a113)), closes [#122](https://github.com/mcp-hangar/helm-charts/issues/122)
+
 ## [0.12.6](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.5...mcp-hangar-operator-v0.12.6) (2026-08-10)
 
 
