@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.8](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.7...mcp-hangar-operator-v0.12.8) (2026-08-14)
+
+
+### Fixed
+
+* **operator:** recopy CRDs after the operator field cuts ([#139](https://github.com/mcp-hangar/helm-charts/issues/139)) ([659bf36](https://github.com/mcp-hangar/helm-charts/commit/659bf36d6a6ba66f28bea1393384be18b9f0ede7)), closes [#127](https://github.com/mcp-hangar/helm-charts/issues/127)
+
 ## [0.12.7](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.6...mcp-hangar-operator-v0.12.7) (2026-08-14)
 
 
