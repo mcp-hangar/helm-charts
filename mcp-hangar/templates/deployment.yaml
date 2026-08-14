@@ -1,7 +1,6 @@
-{{/* Validated here as well as in the ConfigMap: today the checksum annotation
-     below pulls the ConfigMap in even when `configMap.create` is false, so the
-     guard happens to run either way. That is incidental -- this line makes it
-     deliberate, because a Deployment always renders. */}}
+{{/* Validated here as well as in the ConfigMap, deliberately: a Deployment
+     always renders, so the guards run even if the ConfigMap template stops
+     being reached for some reason. */}}
 {{- include "mcp-hangar.validateCluster" . }}
 apiVersion: apps/v1
 kind: Deployment
@@ -86,8 +85,6 @@ spec:
             - name: data
               mountPath: /app/data
           env:
-            - name: MCP_MODE
-              value: {{ .Values.config.mode | quote }}
             - name: MCP_LOG_LEVEL
               value: {{ .Values.config.logLevel | quote }}
             - name: MCP_JSON_LOGS
