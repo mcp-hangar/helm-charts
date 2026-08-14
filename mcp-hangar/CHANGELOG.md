@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.14.4](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.3...mcp-hangar-v0.14.4) (2026-08-14)
+
+
+### Added
+
+* **hangar:** a named value for the host allow-list, and a guard for the case that 400s ([#117](https://github.com/mcp-hangar/helm-charts/issues/117)) ([c4d7dea](https://github.com/mcp-hangar/helm-charts/commit/c4d7deab65ea47e9144ddb9f874d8a67bc33f87e)), closes [#104](https://github.com/mcp-hangar/helm-charts/issues/104)
+* **hangar:** own the shipped dashboards and alerts, and fix the drift ([#135](https://github.com/mcp-hangar/helm-charts/issues/135)) ([b6f59c4](https://github.com/mcp-hangar/helm-charts/commit/b6f59c46fdc94e12ef269081805674cfaa2fed4f)), closes [#126](https://github.com/mcp-hangar/helm-charts/issues/126)
+
+
+### Fixed
+
+* **hangar:** default the mcp-hangar chart to core image 2.6.0 ([#113](https://github.com/mcp-hangar/helm-charts/issues/113)) ([023a91c](https://github.com/mcp-hangar/helm-charts/commit/023a91cb989eb0f3c5b0ad46dabb20f6b454336a))
+* **hangar:** pin an MCP session to one replica by default ([#115](https://github.com/mcp-hangar/helm-charts/issues/115)) ([8163762](https://github.com/mcp-hangar/helm-charts/commit/81637626e06d684c349f421575e3f2caf8bdfe1a)), closes [#109](https://github.com/mcp-hangar/helm-charts/issues/109)
+* **hangar:** remove config.mode and configMap.create ([#132](https://github.com/mcp-hangar/helm-charts/issues/132)) ([c261cdc](https://github.com/mcp-hangar/helm-charts/commit/c261cdc4c7d5ac3d126610f156acd3a8a5aaa457)), closes [#121](https://github.com/mcp-hangar/helm-charts/issues/121)
+* **hangar:** remove the ingress values the chart never rendered ([#131](https://github.com/mcp-hangar/helm-charts/issues/131)) ([2392d3c](https://github.com/mcp-hangar/helm-charts/commit/2392d3c8318fb7598f3ad1f0be19da8fc992803b)), closes [#120](https://github.com/mcp-hangar/helm-charts/issues/120)
+
 ## [0.14.3](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.14.2...mcp-hangar-v0.14.3) (2026-08-11)
 
 
