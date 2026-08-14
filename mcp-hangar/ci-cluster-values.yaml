@@ -7,11 +7,6 @@
 # themselves failing the render when any piece is missing.
 replicaCount: 3
 
-# Explicit, because appVersion tracks the last stable core and these keys need
-# 2.5.0. A chart defaulting to a candidate would hand one to everybody.
-image:
-  tag: "2.5.0-rc.2"
-
 persistence:
   backend: postgresql
   postgresql:
