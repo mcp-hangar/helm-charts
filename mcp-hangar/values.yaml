@@ -97,8 +97,10 @@ affinity:
           topologyKey: kubernetes.io/hostname
 
 # MCP-Hangar specific configuration
+#
+# No `mode:` key: a Kubernetes deployment serves HTTP. The Deployment passes
+# `--http`, which wins over anything else that could name a mode.
 config:
-  mode: http
   port: 8080
   logLevel: INFO
   jsonLogs: true
@@ -233,9 +235,9 @@ dashboards:
   folder: "MCP Hangar"
   folderAnnotation: grafana_folder
 
-# ConfigMap for hangar config.yaml
-configMap:
-  create: true
+# No `configMap:` block: the Deployment always mounts the ConfigMap this chart
+# renders, and there is no value naming an existing one, so the ConfigMap is
+# not optional.
 
 # ── Network Policy ─────────────────────────────────────────────────────
 
