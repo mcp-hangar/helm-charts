@@ -201,8 +201,9 @@ topologySpreadConstraints:
 webhook:
   # Enable validating admission webhooks
   enabled: false
-  # Webhook service port
-  port: 9443
+  # No `port:` key: controller-runtime binds 9443 and the image takes no flag
+  # to move it, so the containerPort and NetworkPolicy hardcode 9443. The
+  # Service still fronts it on 443.
   # cert-manager integration for webhook TLS
   certManager:
     # Use cert-manager to provision webhook certificates

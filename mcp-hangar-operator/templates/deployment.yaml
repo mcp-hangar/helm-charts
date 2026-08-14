@@ -93,12 +93,13 @@ spec:
               containerPort: {{ .Values.operator.health.port }}
               protocol: TCP
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
-            # The 0.12.2 image has no --webhook-port flag; controller-runtime's
-            # webhook server always binds its built-in default of 9443. This
-            # containerPort (and the Service/Certificate) must stay at
-            # .Values.webhook.port's default of 9443 to match (issue #31).
+            # Hardcoded, not a value: controller-runtime's webhook server
+            # always binds its built-in 9443, and the image takes no flag to
+            # move it -- passing one crashlooped installs (issue #31). A
+            # containerPort that could disagree with the bind is a Service
+            # targetPort pointing at nothing (issue #122).
             - name: webhook
-              containerPort: {{ .Values.webhook.port }}
+              containerPort: 9443
               protocol: TCP
             {{- end }}
           livenessProbe:
