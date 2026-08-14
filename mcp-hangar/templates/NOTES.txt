@@ -6,20 +6,22 @@ EITHER a configured `auth:` block (see values.yaml `auth`) OR
 their secure defaults, the pod will not become Ready.
 
 {{- if gt (int .Values.replicaCount) 1 }}
-{{- if ne (.Values.service.sessionAffinity | default "None") "ClientIP" }}
+{{- if eq (.Values.service.sessionAffinity | default "None") "ClientIP" }}
 
-WARNING: replicaCount is {{ .Values.replicaCount }} and service.sessionAffinity is {{ .Values.service.sessionAffinity | default "None" }}.
-An MCP Streamable HTTP session lives in one replica's memory, so a round-robin
-Service will send the second request of a session to a pod that never saw the
-first, and most MCP requests will fail with "Session not found". Set
-service.sessionAffinity to ClientIP unless you are pinning sessions elsewhere.
-{{- else }}
+NOTE: service.sessionAffinity is ClientIP. From {{ .Chart.AppVersion }} the gateway serves
+the MCP transport without a session, so replicas are interchangeable and the pin
+is no longer needed. It is not harmful -- but it keys on the source address as
+the Service sees it, so behind a proxy that does not preserve the client address
+it sends everything to one pod. Set it to None unless you are pinning image.tag
+to a gateway older than 2.7.0.
+{{- else if .Values.image.tag }}
 
-NOTE: service.sessionAffinity is ClientIP, which pins a caller to one replica --
-but it is kube-proxy behaviour, so it does not apply to traffic that skips the
-Service. Several Ingress controllers route straight to pod IPs by default. If
-you front this release with one, pin sessions there too (a client-address
-hash), or MCP requests will still fail with "Session not found".
+CHECK: image.tag is set to "{{ .Values.image.tag }}" and service.sessionAffinity is None.
+If that tag names a gateway older than 2.7.0, its MCP sessions live in one
+replica's memory and a round-robin Service will answer "Session not found" to
+most requests -- set service.sessionAffinity to ClientIP, and pin your ingress
+too. From 2.7.0 there is no session and None is correct. The chart cannot read
+the version out of a tag, so it asks.
 {{- end }}
 {{- end }}
 

@@ -38,25 +38,24 @@ securityContext:
 service:
   type: ClusterIP
   port: 8080
-  # An MCP Streamable HTTP session lives in ONE replica's memory. A round-robin
-  # Service therefore hands the second request of a session to a pod that never
-  # saw the first, which answers "Session not found" -- measured at 13 of 15
-  # attempts on replicaCount: 3. Defaulted ON because the failure is the common
-  # case, not the rare one, and an operator who has to discover this setting has
-  # already shipped a broken deployment.
+  # None, from appVersion 2.7.0. The gateway serves the MCP transport without a
+  # session (core#877), so every replica can answer every request and a
+  # round-robin Service is correct. Pinning would now only cost balance: it keys
+  # on the source address AS THE SERVICE SEES IT, so behind a proxy that does not
+  # preserve the client address it lands everything on one backend.
   #
-  # Limits worth knowing before you rely on it:
-  #   * this is kube-proxy behaviour, so it does nothing for traffic that skips
-  #     the Service -- an Ingress controller routing straight to pod IPs, which
-  #     several do by default;
-  #   * it keys on the source address AS THE SERVICE SEES IT, so behind a proxy
-  #     that does not preserve the client address every session lands on one
-  #     backend: affinity holds, balance does not;
-  #   * it does not survive a rolling restart or a scale-down -- the owning pod
-  #     goes away and the session goes with it.
+  # SET THIS TO ClientIP IF YOU PIN image.tag TO A GATEWAY OLDER THAN 2.7.0.
+  # There, a session lived in one replica's memory and a round-robin Service
+  # answered "Session not found" to most requests -- 13 of 15 on replicaCount: 3.
+  # The chart deploys whatever tag you give it and cannot check this for you, so
+  # NOTES.txt asks at install time instead.
   #
-  # Set to None for round-robin, deliberately.
-  sessionAffinity: ClientIP
+  # Two things worth knowing if you do set it: it is kube-proxy behaviour, so it
+  # does nothing for traffic that skips the Service (several Ingress controllers
+  # route straight to pod IPs), and it does not survive a rolling restart -- the
+  # owning pod goes away and the session with it. Neither was ever fixable by
+  # configuration, which is why the gateway stopped needing the pin instead.
+  sessionAffinity: None
   sessionAffinityConfig:
     clientIP:
       # Kubernetes' own default. Raise it for sessions that idle longer than
