@@ -86,10 +86,9 @@ operator:
   # level (e.g. "2"). Note: "warn" is NOT a supported value.
   logLevel: info
 
-  # Metrics configuration
+  # Metrics configuration. There is no `enabled:` key -- the manager always
+  # binds its metrics address, so a flag here could not turn them off.
   metrics:
-    # Enable metrics endpoint
-    enabled: true
     # Metrics bind port
     port: 8080
 
@@ -121,15 +120,6 @@ operator:
     # gracefulShutdown.timeout to allow the manager to drain work before
     # the kubelet force-kills the process.
     terminationGracePeriodSeconds: 15
-
-  # Reconciliation settings
-  reconcile:
-    # Requeue interval for ready providers
-    readyRequeueInterval: "5m"
-    # Requeue interval for errored providers
-    errorRequeueInterval: "10s"
-    # Maximum concurrent reconciles per controller
-    maxConcurrentReconciles: 10
 
 # =============================================================================
 # MCP-Hangar Core Connection
