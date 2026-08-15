@@ -15,11 +15,15 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 # The alert groups shipped on a cluster are OWNED by files/prometheus-alerts.yaml
-# in this repo. Core's monitoring/ stack is the compose/dev copy, not an
-# upstream this file is generated from: nothing syncs them, and they have
-# drifted in both directions before (issue #126).
+# in this repo -- and since mcp-hangar/mcp-hangar#930 deleted core's monitoring/
+# directory, that file is the only copy left. It is not generated from anything
+# upstream. (The two used to coexist and drifted in both directions, which is
+# what issue #126 was about.)
 # .Files.Get inserts the content verbatim, so the Prometheus annotation
-# templates ({{`{{ $value }}`}} etc.) pass through untouched.
+# templates ({{`{{ $value }}`}} etc.) pass through untouched. The indent below
+# is load-bearing: at `indent 0` this renders `spec: null` with `groups` as a
+# top-level key, which still passes kubeconform. ci-charts.yml checks the
+# rendered rule count for exactly that reason.
 spec:
 {{ .Files.Get "files/prometheus-alerts.yaml" | indent 2 }}
 {{- end }}
