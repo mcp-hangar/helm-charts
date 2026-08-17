@@ -1,7 +1,11 @@
 # MCP Hangar Helm Charts
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Helm](https://img.shields.io/badge/Helm-v3%20%7C%20v4-blue.svg)](https://helm.sh)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
+[![Helm](https://img.shields.io/badge/Helm-v3%20%7C%20v4-0F1689?logo=helm&logoColor=white)](https://helm.sh)
+[![mcp-hangar](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmcp-hangar%2Fhelm-charts%2Fmain%2Fmcp-hangar%2FChart.yaml&query=%24.version&label=mcp-hangar&prefix=v&logo=helm&logoColor=white&color=0F1689)](https://github.com/mcp-hangar/helm-charts/releases?q=mcp-hangar-v&expanded=true)
+[![mcp-hangar-operator](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmcp-hangar%2Fhelm-charts%2Fmain%2Fmcp-hangar-operator%2FChart.yaml&query=%24.version&label=mcp-hangar--operator&prefix=v&logo=helm&logoColor=white&color=0F1689)](https://github.com/mcp-hangar/helm-charts/releases?q=mcp-hangar-operator-v&expanded=true)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/mcp-hangar)](https://artifacthub.io/packages/search?repo=mcp-hangar)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/mcp-hangar-operator)](https://artifacthub.io/packages/search?repo=mcp-hangar-operator)
 
 **Helm charts for deploying the MCP Hangar ecosystem on Kubernetes.**
 
@@ -11,6 +15,12 @@ This repository contains official Helm charts for MCP Hangar.
 
 - **mcp-hangar** — Core MCP Hangar server
 - **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management
+
+Both charts are also listed on
+[Artifact Hub](https://artifacthub.io/packages/search?ts_query_web=mcp-hangar&kind=0)
+(verified publisher; the listing is claimed via `artifacthub/` +
+the `artifacthub-metadata` workflow). GHCR stays the publish target and the
+source of truth — Artifact Hub only indexes it.
 
 For current chart and appVersion numbers, see the
 [releases page](https://github.com/mcp-hangar/helm-charts/releases) and the
