@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Helm](https://img.shields.io/badge/Helm-v3%20%7C%20v4-blue.svg)](https://helm.sh)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/mcp-hangar)](https://artifacthub.io/packages/helm/mcp-hangar/mcp-hangar)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/mcp-hangar-operator)](https://artifacthub.io/packages/helm/mcp-hangar-operator/mcp-hangar-operator)
 
 **Helm charts for deploying the MCP Hangar ecosystem on Kubernetes.**
 
@@ -11,6 +13,12 @@ This repository contains official Helm charts for MCP Hangar.
 
 - **mcp-hangar** — Core MCP Hangar server
 - **mcp-hangar-operator** — Kubernetes operator for MCP provider lifecycle management
+
+Both charts are also listed on
+[Artifact Hub](https://artifacthub.io/packages/search?ts_query_web=mcp-hangar&kind=0)
+(verified publisher; the listing is claimed via `artifacthub/` +
+the `artifacthub-metadata` workflow). GHCR stays the publish target and the
+source of truth — Artifact Hub only indexes it.
 
 For current chart and appVersion numbers, see the
 [releases page](https://github.com/mcp-hangar/helm-charts/releases) and the
