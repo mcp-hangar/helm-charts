@@ -1,7 +1,7 @@
 # MCP Hangar Helm Charts
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Helm](https://img.shields.io/badge/Helm-v3-blue.svg)](https://helm.sh)
+[![Helm](https://img.shields.io/badge/Helm-v3%20%7C%20v4-blue.svg)](https://helm.sh)
 
 **Helm charts for deploying the MCP Hangar ecosystem on Kubernetes.**
 
@@ -154,5 +154,3 @@ helm package mcp-hangar-operator
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 [Docs](https://mcp-hangar.io) | [GitHub](https://github.com/mcp-hangar/helm-charts)
-
-<!-- seeded violation for the WS-5 red-gate proof: helm upgrade --atomic -->
