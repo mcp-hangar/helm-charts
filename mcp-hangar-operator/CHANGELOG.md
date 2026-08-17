@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.10](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.9...mcp-hangar-operator-v0.12.10) (2026-08-17)
+
+
+### Fixed
+
+* **operator:** drop v1alpha1 from the chart -- webhooks, CRDs, conversion knob (operator 0.16.0) ([#155](https://github.com/mcp-hangar/helm-charts/issues/155)) ([2ea89de](https://github.com/mcp-hangar/helm-charts/commit/2ea89de2bdaa73feae9906e4393dc5fe48263816))
+
 ## [0.12.9](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.8...mcp-hangar-operator-v0.12.9) (2026-08-17)
 
 
