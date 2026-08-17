@@ -154,3 +154,5 @@ helm package mcp-hangar-operator
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 [Docs](https://mcp-hangar.io) | [GitHub](https://github.com/mcp-hangar/helm-charts)
+
+<!-- seeded violation for the WS-5 red-gate proof: helm upgrade --atomic -->
