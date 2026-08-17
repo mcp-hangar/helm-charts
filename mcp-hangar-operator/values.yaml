@@ -245,12 +245,6 @@ crds:
   # annotation, so `helm uninstall` does not cascade-delete the CRDs (and
   # with them every MCPServer/MCPServerGroup/MCPDiscoverySource resource).
   keep: true
-  # CRD conversion webhook for v1alpha1 <-> v1alpha2 conversion.
-  # When enabled, the operator serves a /convert endpoint and the CRD
-  # spec.conversion stanza is set to Webhook strategy. Requires
-  # webhook.certManager.enabled=true (or manual TLS provisioning).
-  conversion:
-    enabled: false
 
 # =============================================================================
 # RBAC Configuration

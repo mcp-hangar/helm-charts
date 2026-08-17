@@ -74,10 +74,11 @@ Create the name of the credentials secret
 
 {{/*
 Whether webhook infrastructure (cert, service, volume mounts) is needed.
-True when either admission webhooks or CRD conversion webhooks are enabled.
+True when admission webhooks are enabled. (The CRD conversion knob went with
+v1alpha1 -- operator 0.16.0 serves a single version and has no /convert.)
 */}}
 {{- define "mcp-hangar-operator.webhookEnabled" -}}
-{{- if or .Values.webhook.enabled .Values.crds.conversion.enabled -}}
+{{- if .Values.webhook.enabled -}}
 true
 {{- end -}}
 {{- end }}
