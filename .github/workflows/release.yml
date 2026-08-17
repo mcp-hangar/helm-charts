@@ -24,6 +24,15 @@ permissions:
   packages: write   # push to GHCR OCI
   id-token: write   # keyless cosign signing (OIDC)
 
+env:
+  # Publish with the pinned Helm 4 (#149; the dual-version rationale and the
+  # sibling HELM3/HELM4 pins live in ci-charts.yml -- keep the two files in
+  # step). `helm package`/`push` output is identical across majors, so this is
+  # not a compatibility statement: it's determinism -- before this pin the
+  # publish pipeline ran whatever "latest" resolved to -- plus dogfooding the
+  # newer major on the publish path.
+  HELM4_VERSION: v4.2.4
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -35,6 +44,8 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM4_VERSION }}
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
       - uses: imjasonh/setup-crane@v0.7

@@ -1,7 +1,7 @@
 # MCP Hangar Helm Charts
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Helm](https://img.shields.io/badge/Helm-v3-blue.svg)](https://helm.sh)
+[![Helm](https://img.shields.io/badge/Helm-v3%20%7C%20v4-blue.svg)](https://helm.sh)
 
 **Helm charts for deploying the MCP Hangar ecosystem on Kubernetes.**
 
@@ -21,7 +21,40 @@ See [RELEASE.md](RELEASE.md) for how charts are versioned and published.
 ## Prerequisites
 
 - Kubernetes 1.25+
-- Helm 3.x
+- Helm 3.x or 4.x (see [Helm versions](#helm-versions))
+
+## Helm versions
+
+Both Helm 3 and Helm 4 are supported and CI-tested on every PR (currently
+pinned at v3.21.4 and v4.2.4; the pins in `.github/workflows/ci-charts.yml`
+are the source of truth). CI asserts lint/render under both majors, an
+identical rendered output across them, the full install → test → upgrade →
+rollback lifecycle under each, and the cross path: installed by Helm 3,
+upgraded by Helm 4.
+
+What the majors do differently, as observed by those CI assertions:
+
+- **One release = one apply model.** A fresh Helm 4 install uses server-side
+  apply (SSA); a release created by Helm 3 keeps client-side apply across
+  Helm 4 upgrades until you opt in with `helm upgrade --server-side=true`
+  (the flag takes a value). Don't mix majors on the same release ad hoc.
+- **SSA turns silent overwrites into explicit conflicts** — relevant here
+  because the operator chart ships its CRDs as templates. On an SSA-installed
+  release, a plain out-of-band `kubectl apply --server-side` to a helm-owned
+  field is refused by the apiserver (`conflict with "helm"`). If the other
+  writer forces the conflict and takes the field, the next `helm upgrade`
+  fails with an explicit conflict error naming the competing manager — it
+  does **not** silently take the field back; `helm upgrade --force-conflicts`
+  is the documented way to reclaim it. A Helm-3-created (client-side) release
+  has none of this protection: the same out-of-band write goes through
+  silently.
+- **`--wait` and `helm test` are stricter under Helm 4** (kstatus judges real
+  readiness — probes and conditions, not the Helm 3 pod-status heuristic). A
+  deploy that "passed" under Helm 3 and fails under 4 is the check getting
+  honest, not the chart regressing. One concrete flip in the other direction:
+  `helm3 test --logs` exits non-zero on a *passing* test of the mcp-hangar
+  chart, because Helm 3 deletes the `hook-succeeded` test pod before fetching
+  its logs; Helm 4 prints the logs first.
 
 ## Quick Start
 
