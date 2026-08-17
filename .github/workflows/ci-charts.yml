@@ -7,6 +7,14 @@
 # the image watches, or a `--wait` that hangs on the default replica count
 # all produce charts that lint and template fine and then crashloop or
 # hang for a real user. This workflow asserts INSTALL, not just render.
+#
+# Helm 3 AND Helm 4 (#149): users legitimately run either major, and the two
+# differ where these charts care -- Helm 4 fresh installs default to
+# server-side apply (SSA), `--wait` judges real readiness (kstatus, not the
+# Helm 3 pod-status heuristic), and SSA turns silent field overwrites into
+# explicit conflicts on the templated CRDs. So every gate below runs under
+# both majors, plus a cross lane for the path users actually live in:
+# installed by 3, upgraded by 4.
 name: ci-charts
 
 on:
@@ -43,6 +51,17 @@ env:
   # the rules it validates change rarely, and a moving `latest` would turn this
   # gate red on somebody else's release day.
   PROMETHEUS_VERSION: v3.13.2
+  # The supported Helm matrix (#149): latest patch of each major at time of
+  # pinning, bumped deliberately by PR, never resolved at runtime -- before
+  # these pins `azure/setup-helm` floated on "latest" and the repo's CI could
+  # switch Helm majors on the action's schedule with zero assertion of either.
+  # The SHA256s pin the direct tarball downloads (get.helm.sh) in jobs that
+  # need both binaries at once, where setup-helm can only install one.
+  # release.yml carries its own HELM4_VERSION copy -- keep them in step.
+  HELM3_VERSION: v3.21.4
+  HELM3_SHA256: 61f88ab166748cb19604d7884cb100ae9ccb13804ddeb98e08af167eacbb6a14
+  HELM4_VERSION: v4.2.4
+  HELM4_SHA256: c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3
 
 jobs:
   # Runs on every PR (see the un-filtered `on:` above) and decides whether
@@ -64,8 +83,43 @@ jobs:
               - 'mcp-hangar-operator/**'
               - '.github/workflows/ci-charts.yml'
 
+  # Helm 4 removed the atomic flag (use rollback-on-failure), the standalone
+  # force flag (split into force-replace/force-conflicts) and path-style
+  # post-renderers. This repo uses none of them (verified at the time of
+  # #149); this gate keeps it that way so the next major's flag removals stay
+  # a non-event. Runs on every PR -- it's grep, not a cluster. The flags are
+  # deliberately NOT spelled with their dashes anywhere in this job, comments
+  # included: the gate greps this file too.
+  flag-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Helm-4-removed flags stay out of workflows and READMEs
+        run: |
+          set -euo pipefail
+          # The banned patterns are assembled from pieces so this file's own
+          # gate doesn't match itself. `-e` because the pattern starts with
+          # `--`, which grep would otherwise parse as an option.
+          d='--'
+          pat="${d}atomic|${d}force([^-a-zA-Z]|\$)|${d}post-renderer[= ][^ ]*/"
+          # rc=1 (no matches) is the pass; rc=2 (e.g. a listed file missing)
+          # must fail the gate rather than read as "clean".
+          rc=0
+          grep -rnE -e "$pat" .github/workflows/ README.md mcp-hangar/README.md mcp-hangar-operator/README.md || rc=$?
+          if [ "$rc" = "0" ]; then
+            echo "::error::a Helm-4-removed flag appears above (banned: atomic, standalone force, path-style post-renderer)"
+            exit 1
+          elif [ "$rc" != "1" ]; then
+            echo "::error::grep failed (rc=${rc}) -- gate cannot conclude anything"
+            exit 1
+          fi
+          echo "no Helm-4-removed flags found"
+
   # Fast: no cluster. Catches template/schema-level defects (bad YAML,
-  # invalid fields, wrong apiVersions) in seconds, per chart.
+  # invalid fields, wrong apiVersions) in seconds, per chart -- under BOTH
+  # supported Helm majors, so a template that only one major accepts (or a
+  # deprecation only one major warns about) is a red build, not a user report.
   lint-and-render:
     needs: detect
     if: needs.detect.outputs.run == 'true'
@@ -74,10 +128,13 @@ jobs:
       fail-fast: false
       matrix:
         chart: [mcp-hangar, mcp-hangar-operator]
+        helm: [v3, v4]
     steps:
       - uses: actions/checkout@v7
 
       - uses: azure/setup-helm@v5
+        with:
+          version: ${{ matrix.helm == 'v3' && env.HELM3_VERSION || env.HELM4_VERSION }}
 
       - name: Install kubeconform
         run: |
@@ -163,16 +220,111 @@ jobs:
           EOF
           promtool check rules /tmp/rules.yaml
 
+  # There should be zero template-level divergence between the majors --
+  # assert it, don't assume it. If Helm 4 ever renders differently we want a
+  # red build here, not a surprised user.
+  template-parity:
+    needs: detect
+    if: needs.detect.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: [mcp-hangar, mcp-hangar-operator]
+    steps:
+      - uses: actions/checkout@v7
+
+      # `azure/setup-helm` can only install one Helm; this job needs both, so
+      # it fetches the tarballs directly -- pinned by URL + checksum, same as
+      # kubeconform/promtool. The installed binaries are thin wrappers that
+      # tee stderr to /tmp/helm-stderr.log so lanes can later assert "no
+      # deprecation warnings" without instrumenting every call site.
+      - name: Install pinned helm3 + helm4
+        run: |
+          set -euo pipefail
+          for spec in "helm3 ${HELM3_VERSION} ${HELM3_SHA256}" "helm4 ${HELM4_VERSION} ${HELM4_SHA256}"; do
+            read -r name ver sha <<< "$spec"
+            curl -sSL "https://get.helm.sh/helm-${ver}-linux-amd64.tar.gz" -o "/tmp/${name}.tgz"
+            echo "${sha}  /tmp/${name}.tgz" | sha256sum -c -
+            mkdir -p "/tmp/${name}" && tar xzf "/tmp/${name}.tgz" -C "/tmp/${name}" --strip-components=1
+            sudo install "/tmp/${name}/helm" "/usr/local/bin/${name}.real"
+            printf '#!/usr/bin/env bash\nexec "/usr/local/bin/%s.real" "$@" 2> >(tee -a /tmp/helm-stderr.log >&2)\n' "$name" \
+              | sudo tee "/usr/local/bin/${name}" > /dev/null
+            sudo chmod +x "/usr/local/bin/${name}"
+          done
+          helm3 version
+          helm4 version
+
+      - name: helm template output byte-identical across majors
+        run: |
+          set -euo pipefail
+          chart="${{ matrix.chart }}"
+          for vf in "" ci-values.yaml ci-cluster-values.yaml; do
+            args=()
+            if [ -n "$vf" ]; then
+              [ -f "${chart}/${vf}" ] || continue
+              args=(-f "${chart}/${vf}")
+            fi
+            helm3 template t "$chart" "${args[@]}" > /tmp/render-v3.yaml
+            helm4 template t "$chart" "${args[@]}" > /tmp/render-v4.yaml
+            if ! diff -u /tmp/render-v3.yaml /tmp/render-v4.yaml > /tmp/render.diff; then
+              echo "::error::helm3 vs helm4 render drift for ${chart} (${vf:-default values})"
+              head -100 /tmp/render.diff
+              exit 1
+            fi
+            echo "identical: ${chart} (${vf:-default values})"
+          done
+
+      # Guard the flag against rot: crds.install=false must mean zero CRD
+      # documents, under both majors.
+      - name: crds.install=false renders zero CRDs under both majors
+        if: matrix.chart == 'mcp-hangar-operator'
+        run: |
+          set -euo pipefail
+          for h in helm3 helm4; do
+            n="$("$h" template t mcp-hangar-operator --set crds.install=false | grep -c '^kind: CustomResourceDefinition' || true)"
+            if [ "$n" != "0" ]; then
+              echo "::error::${h}: crds.install=false still rendered ${n} CRD document(s)"
+              exit 1
+            fi
+            echo "${h}: zero CRD documents with crds.install=false"
+          done
+
   # The crux: install each chart against its pinned appVersion image on a
   # real cluster and assert it actually works, not just that it renders.
+  # Two lanes: h3 (full lifecycle under Helm 3 -- asserts we didn't quietly
+  # become Helm-4-only) and h4 (full lifecycle under Helm 4 -- fresh install
+  # means SSA by default, and every --wait below is kstatus-gated real
+  # readiness rather than the Helm 3 pod-status heuristic). The cross-version
+  # path lives in the separate cross-upgrade job.
   install-smoke:
     needs: [detect, lint-and-render]
     if: needs.detect.outputs.run == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [h3, h4]
+    env:
+      HELM: ${{ matrix.lane == 'h3' && 'helm3' || 'helm4' }}
     steps:
       - uses: actions/checkout@v7
 
-      - uses: azure/setup-helm@v5
+      - name: Install pinned helm3 + helm4
+        run: |
+          set -euo pipefail
+          for spec in "helm3 ${HELM3_VERSION} ${HELM3_SHA256}" "helm4 ${HELM4_VERSION} ${HELM4_SHA256}"; do
+            read -r name ver sha <<< "$spec"
+            curl -sSL "https://get.helm.sh/helm-${ver}-linux-amd64.tar.gz" -o "/tmp/${name}.tgz"
+            echo "${sha}  /tmp/${name}.tgz" | sha256sum -c -
+            mkdir -p "/tmp/${name}" && tar xzf "/tmp/${name}.tgz" -C "/tmp/${name}" --strip-components=1
+            sudo install "/tmp/${name}/helm" "/usr/local/bin/${name}.real"
+            printf '#!/usr/bin/env bash\nexec "/usr/local/bin/%s.real" "$@" 2> >(tee -a /tmp/helm-stderr.log >&2)\n' "$name" \
+              | sudo tee "/usr/local/bin/${name}" > /dev/null
+            sudo chmod +x "/usr/local/bin/${name}"
+          done
+          helm3 version
+          helm4 version
 
       - name: Create kind cluster
         uses: helm/kind-action@v1
@@ -221,8 +373,8 @@ jobs:
             echo "GET /health/ready (${label}) -> 200"
           }
 
-          echo "::group::helm install core"
-          helm install core ./mcp-hangar -n core --create-namespace --wait --timeout 300s \
+          echo "::group::${HELM} install core"
+          "$HELM" install core ./mcp-hangar -n core --create-namespace --wait --timeout 300s \
             --set config.unsafeNoAuth=true
           echo "::endgroup::"
 
@@ -237,8 +389,8 @@ jobs:
           wait_for_core_ready "initial install"
           echo "::endgroup::"
 
-          echo "::group::helm test core"
-          helm test core -n core --logs
+          echo "::group::${HELM} test core"
+          "$HELM" test core -n core --logs
           echo "::endgroup::"
 
           # Upgrade + rollback (#7). This used to bump replicaCount to 2,
@@ -254,8 +406,8 @@ jobs:
           # be safe here. The multi-replica shape is covered by rendering
           # ci-cluster-values.yaml, which is as far as it goes without a
           # PostgreSQL this job does not stand up.
-          echo "::group::helm upgrade core (log level change, forces a rollout)"
-          helm upgrade core ./mcp-hangar -n core --reuse-values --wait --timeout 300s \
+          echo "::group::${HELM} upgrade core (log level change, forces a rollout)"
+          "$HELM" upgrade core ./mcp-hangar -n core --reuse-values --wait --timeout 300s \
             --set config.logLevel=DEBUG
           echo "::endgroup::"
 
@@ -263,8 +415,8 @@ jobs:
           wait_for_core_ready "post-upgrade"
           echo "::endgroup::"
 
-          echo "::group::helm rollback core to revision 1"
-          helm rollback core 1 -n core --wait --timeout 300s
+          echo "::group::${HELM} rollback core to revision 1"
+          "$HELM" rollback core 1 -n core --wait --timeout 300s
           echo "::endgroup::"
 
           echo "::group::GET /health/ready (post-rollback)"
@@ -293,8 +445,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "::group::helm install operator"
-          helm install op ./mcp-hangar-operator -n op --create-namespace --wait --timeout 300s
+          echo "::group::${HELM} install operator"
+          "$HELM" install op ./mcp-hangar-operator -n op --create-namespace --wait --timeout 300s
           echo "::endgroup::"
 
           echo "::group::operator pod readiness"
@@ -355,8 +507,8 @@ jobs:
           # for a standby to become Ready, which never happens, and hangs
           # (issue #26). A benign podAnnotations change exercises the
           # upgrade/rollback path itself without re-triggering that hang.
-          echo "::group::helm upgrade operator (benign podAnnotations change)"
-          helm upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
+          echo "::group::${HELM} upgrade operator (benign podAnnotations change)"
+          "$HELM" upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
             --set-string podAnnotations.ci-upgrade-test=1
           echo "::endgroup::"
 
@@ -364,8 +516,8 @@ jobs:
           kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
           echo "::endgroup::"
 
-          echo "::group::helm rollback operator to revision 1"
-          helm rollback op 1 -n op --wait --timeout 300s
+          echo "::group::${HELM} rollback operator to revision 1"
+          "$HELM" rollback op 1 -n op --wait --timeout 300s
           echo "::endgroup::"
 
           echo "::group::operator Deployment Available (post-rollback)"
@@ -388,6 +540,47 @@ jobs:
           echo "---- operator logs ----"
           kubectl -n op logs -l app.kubernetes.io/name=mcp-hangar-operator --all-containers --tail=300 || true
 
+      # WS-3 of #149: the one genuinely new Helm 4 failure mode for these
+      # charts. The CRDs ship as templates and go through the normal apply
+      # path, so an out-of-band `kubectl apply --server-side` creates a
+      # competing field manager on a helm-owned field. This step seeds exactly
+      # that (a foreign value on the helm-owned `helm.sh/chart` label of the
+      # mcpservers CRD) and then upgrades. First run records the observed
+      # behavior -- conflict error vs clean takeover -- in the log; the
+      # assertion is tightened to the observed truth before merge, and WS-4
+      # documents that truth verbatim.
+      - name: CRD field-manager conflict under SSA (h4 lane only)
+        id: crd_conflict
+        if: matrix.lane == 'h4' && steps.install_operator.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          echo "::group::seed a competing field manager on the mcpservers CRD"
+          kubectl apply --server-side --field-manager=someone-else -f - <<< '{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"mcpservers.mcp-hangar.io","labels":{"helm.sh/chart":"someone-else-owns-this"}}}'
+          echo "label now: $(kubectl get crd mcpservers.mcp-hangar.io -o jsonpath='{.metadata.labels.helm\.sh/chart}')"
+          echo "::endgroup::"
+
+          echo "::group::helm4 upgrade against the competing manager"
+          rc=0
+          out="$(helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
+            --set-string podAnnotations.ci-conflict-probe=1 2>&1)" || rc=$?
+          echo "$out"
+          echo "::endgroup::"
+
+          label="$(kubectl get crd mcpservers.mcp-hangar.io -o jsonpath='{.metadata.labels.helm\.sh/chart}')"
+          echo "OBSERVED: helm4 upgrade exit=${rc}; post-upgrade helm.sh/chart label=${label}"
+
+      - name: No deprecation warnings from helm4 (h4 lane only)
+        if: matrix.lane == 'h4'
+        run: |
+          touch /tmp/helm-stderr.log
+          if grep -in deprecat /tmp/helm-stderr.log; then
+            echo "::error::helm4 emitted deprecation warnings on our invocations (lines above)"
+            exit 1
+          fi
+          echo "helm4 stderr clean of deprecation warnings"
+
       - name: Gate on install-smoke results
         if: always()
         run: |
@@ -400,23 +593,264 @@ jobs:
               status=1
             fi
           done
+          # h3 lane skips the probe; only an actual failure is a failure.
+          echo "crd-conflict: ${{ steps.crd_conflict.outcome }}"
+          if [ "${{ steps.crd_conflict.outcome }}" = "failure" ]; then
+            status=1
+          fi
+          exit "$status"
+
+  # The lane users actually live in: a release created by Helm 3, upgraded by
+  # Helm 4. Per Helm 4's documented behavior the release latches to
+  # client-side apply until `--server-side` opts in -- asserted here via the
+  # field managers on a chart-owned Deployment, then the SSA migration and a
+  # rollback on top of it.
+  cross-upgrade:
+    needs: [detect, lint-and-render]
+    if: needs.detect.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned helm3 + helm4
+        run: |
+          set -euo pipefail
+          for spec in "helm3 ${HELM3_VERSION} ${HELM3_SHA256}" "helm4 ${HELM4_VERSION} ${HELM4_SHA256}"; do
+            read -r name ver sha <<< "$spec"
+            curl -sSL "https://get.helm.sh/helm-${ver}-linux-amd64.tar.gz" -o "/tmp/${name}.tgz"
+            echo "${sha}  /tmp/${name}.tgz" | sha256sum -c -
+            mkdir -p "/tmp/${name}" && tar xzf "/tmp/${name}.tgz" -C "/tmp/${name}" --strip-components=1
+            sudo install "/tmp/${name}/helm" "/usr/local/bin/${name}.real"
+            printf '#!/usr/bin/env bash\nexec "/usr/local/bin/%s.real" "$@" 2> >(tee -a /tmp/helm-stderr.log >&2)\n' "$name" \
+              | sudo tee "/usr/local/bin/${name}" > /dev/null
+            sudo chmod +x "/usr/local/bin/${name}"
+          done
+          helm3 version
+          helm4 version
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.KIND_NODE_IMAGE }}
+          cluster_name: chart-ci-cross
+          wait: 90s
+
+      - name: Cross-version lifecycle (core)
+        id: cross_core
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          wait_for_core_ready() {
+            local label="$1"
+            kubectl -n core port-forward svc/core-mcp-hangar 18080:8080 >/tmp/core-pf.log 2>&1 &
+            local pf_pid=$!
+
+            local code="" ready=false
+            for _ in $(seq 1 20); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/health/ready || true)
+              if [ "$code" = "200" ]; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+
+            kill "$pf_pid" 2>/dev/null || true
+
+            if [ "$ready" != "true" ]; then
+              echo "::error::GET /health/ready (${label}) did not return 200 (last code: ${code:-<none>})"
+              cat /tmp/core-pf.log || true
+              return 1
+            fi
+            echo "GET /health/ready (${label}) -> 200"
+          }
+
+          # Prints manager/operation pairs for a Deployment; the assertions
+          # below grep these. CSA shows up as helm/Update, SSA as helm/Apply.
+          deploy_managers() {
+            kubectl -n "$1" get deploy "$2" \
+              -o jsonpath='{range .metadata.managedFields[*]}{.manager}{"/"}{.operation}{"\n"}{end}'
+          }
+
+          echo "::group::helm3 install core"
+          helm3 install core ./mcp-hangar -n core --create-namespace --wait --timeout 300s \
+            --set config.unsafeNoAuth=true
+          wait_for_core_ready "helm3 install"
+          echo "::endgroup::"
+
+          echo "::group::helm4 upgrade core (must latch to client-side apply)"
+          helm4 upgrade core ./mcp-hangar -n core --reuse-values --wait --timeout 300s \
+            --set config.logLevel=DEBUG
+          wait_for_core_ready "helm4 CSA upgrade"
+          managers="$(deploy_managers core core-mcp-hangar)"
+          echo "$managers"
+          if grep -q '^helm/Apply$' <<< "$managers"; then
+            echo "::error::helm4 upgraded a helm3 release with SSA before --server-side opted in -- the CSA latch did not hold"
+            exit 1
+          fi
+          grep -q '^helm/Update$' <<< "$managers" || {
+            echo "::error::expected a helm/Update (CSA) field manager after the helm4 upgrade of a helm3 release"
+            exit 1
+          }
+          echo "CSA latch held: helm/Update present, no helm/Apply"
+          echo "::endgroup::"
+
+          echo "::group::helm4 upgrade core --server-side (the migration step)"
+          helm4 upgrade core ./mcp-hangar -n core --reuse-values --server-side --wait --timeout 300s \
+            --set-string podAnnotations.ci-ssa-migration=1
+          wait_for_core_ready "helm4 --server-side upgrade"
+          managers="$(deploy_managers core core-mcp-hangar)"
+          echo "$managers"
+          grep -q '^helm/Apply$' <<< "$managers" || {
+            echo "::error::expected a helm/Apply (SSA) field manager after the --server-side migration"
+            exit 1
+          }
+          echo "SSA migration took: helm/Apply present"
+          echo "::endgroup::"
+
+          echo "::group::helm4 rollback core to revision 2"
+          helm4 rollback core 2 -n core --wait --timeout 300s
+          wait_for_core_ready "helm4 rollback"
+          echo "::endgroup::"
+
+          echo "::group::release history sane"
+          helm4 history core -n core
+          helm4 history core -n core -o json \
+            | jq -e 'length == 4 and (.[-1].status == "deployed")' > /dev/null || {
+            echo "::error::expected 4 revisions with the last one deployed"
+            exit 1
+          }
+          echo "::endgroup::"
+
+      - name: Diagnostics (core) on failure
+        if: steps.cross_core.outcome == 'failure'
+        run: |
+          echo "---- pods ----"
+          kubectl -n core get pods -o wide || true
+          echo "---- describe pods ----"
+          kubectl -n core describe pods || true
+          echo "---- events ----"
+          kubectl -n core get events --sort-by=.lastTimestamp || true
+          echo "---- logs ----"
+          kubectl -n core logs -l app.kubernetes.io/name=mcp-hangar --all-containers --tail=300 || true
+          echo "---- history ----"
+          helm4 history core -n core || true
+
+      - name: Cross-version lifecycle (operator)
+        id: cross_operator
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          deploy_managers() {
+            kubectl -n "$1" get deploy "$2" \
+              -o jsonpath='{range .metadata.managedFields[*]}{.manager}{"/"}{.operation}{"\n"}{end}'
+          }
+
+          echo "::group::helm3 install operator"
+          helm3 install op ./mcp-hangar-operator -n op --create-namespace --wait --timeout 300s
+          kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
+          echo "::endgroup::"
+
+          echo "::group::helm4 upgrade operator (must latch to client-side apply)"
+          helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
+            --set-string podAnnotations.ci-cross-a=1
+          managers="$(deploy_managers op op-mcp-hangar-operator)"
+          echo "$managers"
+          if grep -q '^helm/Apply$' <<< "$managers"; then
+            echo "::error::helm4 upgraded a helm3 release with SSA before --server-side opted in -- the CSA latch did not hold"
+            exit 1
+          fi
+          grep -q '^helm/Update$' <<< "$managers" || {
+            echo "::error::expected a helm/Update (CSA) field manager after the helm4 upgrade of a helm3 release"
+            exit 1
+          }
+          echo "CSA latch held: helm/Update present, no helm/Apply"
+          echo "::endgroup::"
+
+          # The migration step drags the two templated multi-hundred-KB CRDs
+          # through server-side apply -- exactly the objects where SSA
+          # behavior differences would surface for real users.
+          echo "::group::helm4 upgrade operator --server-side (the migration step)"
+          helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --server-side --wait --timeout 300s \
+            --set-string podAnnotations.ci-cross-b=1
+          kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
+          managers="$(deploy_managers op op-mcp-hangar-operator)"
+          echo "$managers"
+          grep -q '^helm/Apply$' <<< "$managers" || {
+            echo "::error::expected a helm/Apply (SSA) field manager after the --server-side migration"
+            exit 1
+          }
+          echo "SSA migration took: helm/Apply present"
+          echo "::endgroup::"
+
+          echo "::group::helm4 rollback operator to revision 2"
+          helm4 rollback op 2 -n op --wait --timeout 300s
+          kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
+          echo "::endgroup::"
+
+          echo "::group::release history sane"
+          helm4 history op -n op
+          helm4 history op -n op -o json \
+            | jq -e 'length == 4 and (.[-1].status == "deployed")' > /dev/null || {
+            echo "::error::expected 4 revisions with the last one deployed"
+            exit 1
+          }
+          echo "::endgroup::"
+
+      - name: Diagnostics (operator) on failure
+        if: steps.cross_operator.outcome == 'failure'
+        run: |
+          echo "---- pods ----"
+          kubectl -n op get pods -o wide || true
+          echo "---- describe pods ----"
+          kubectl -n op describe pods || true
+          echo "---- crds ----"
+          kubectl get crds | grep mcp-hangar.io || true
+          echo "---- events ----"
+          kubectl -n op get events --sort-by=.lastTimestamp || true
+          echo "---- operator logs ----"
+          kubectl -n op logs -l app.kubernetes.io/name=mcp-hangar-operator --all-containers --tail=300 || true
+          echo "---- history ----"
+          helm4 history op -n op || true
+
+      - name: Gate on cross-upgrade results
+        if: always()
+        run: |
+          status=0
+          for pair in "core:${{ steps.cross_core.outcome }}" "operator:${{ steps.cross_operator.outcome }}"; do
+            name="${pair%%:*}"
+            outcome="${pair##*:}"
+            echo "${name}: ${outcome}"
+            if [ "$outcome" != "success" ]; then
+              status=1
+            fi
+          done
           exit "$status"
 
   # The one job to mark as a required status check. It `needs` everything
   # above and runs unconditionally (`if: always()`), so it always posts a
-  # result -- unlike lint-and-render/install-smoke, which skip on a
-  # non-chart PR and would otherwise leave a required check pending
-  # forever. It fails only if a needed job actually failed; a job that was
-  # itself skipped (the detect.run == 'false' path) is fine.
+  # result -- unlike the chart jobs, which skip on a non-chart PR and would
+  # otherwise leave a required check pending forever. It fails only if a
+  # needed job actually failed; a job that was itself skipped (the
+  # detect.run == 'false' path) is fine.
   charts-required:
-    needs: [detect, lint-and-render, install-smoke]
+    needs: [detect, flag-guard, lint-and-render, template-parity, install-smoke, cross-upgrade]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check required jobs
         run: |
           status=0
-          for pair in "detect:${{ needs.detect.result }}" "lint-and-render:${{ needs.lint-and-render.result }}" "install-smoke:${{ needs.install-smoke.result }}"; do
+          for pair in \
+            "detect:${{ needs.detect.result }}" \
+            "flag-guard:${{ needs.flag-guard.result }}" \
+            "lint-and-render:${{ needs.lint-and-render.result }}" \
+            "template-parity:${{ needs.template-parity.result }}" \
+            "install-smoke:${{ needs.install-smoke.result }}" \
+            "cross-upgrade:${{ needs.cross-upgrade.result }}"; do
             name="${pair%%:*}"
             result="${pair##*:}"
             echo "${name}: ${result}"
