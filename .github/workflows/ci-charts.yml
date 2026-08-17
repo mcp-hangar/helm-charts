@@ -256,12 +256,12 @@ jobs:
           helm4 version
 
       # Not byte-identical, deliberately: Helm 4 inserts a blank line before
-      # each `---` document separator that Helm 3 does not (observed on
-      # v3.21.4 vs v4.2.4, #150). That is the only difference, and it is
+      # each `---` document separator and emits the documents in a different
+      # order than Helm 3 (both observed on v3.21.4 vs v4.2.4, #150). Both are
       # formatting, so the assertion is object-level identity: parse both
-      # renders and compare the documents. Any semantic drift -- a field, a
-      # value, a document present under one major only -- is still a red
-      # build here.
+      # renders, sort documents by kind/name, and compare. Any semantic
+      # drift -- a field, a value, a document present under one major only --
+      # is still a red build here.
       - name: helm template output identical across majors (object-level)
         run: |
           set -euo pipefail
@@ -270,6 +270,7 @@ jobs:
             python3 - "$1" <<'EOF'
           import sys, yaml
           docs = [d for d in yaml.safe_load_all(open(sys.argv[1])) if d is not None]
+          docs.sort(key=lambda d: (d.get("kind", ""), ((d.get("metadata") or {}).get("name", ""))))
           yaml.safe_dump_all(docs, sys.stdout, default_flow_style=False, sort_keys=True)
           EOF
           }
@@ -405,8 +406,14 @@ jobs:
           wait_for_core_ready "initial install"
           echo "::endgroup::"
 
+          # No --logs: the test pod carries hook-delete-policy: hook-succeeded,
+          # and Helm 3 deletes it before fetching logs -- `helm3 test --logs`
+          # exits 1 with "pods not found" on a PASSING test (observed on
+          # v3.21.4; Helm 4 prints the logs first). The logs of a green
+          # wget --spider are empty anyway; on failure the pod survives and
+          # the diagnostics step has it.
           echo "::group::${HELM} test core"
-          "$HELM" test core -n core --logs
+          "$HELM" test core -n core
           echo "::endgroup::"
 
           # Upgrade + rollback (#7). This used to bump replicaCount to 2,
@@ -572,20 +579,43 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "::group::seed a competing field manager on the mcpservers CRD"
-          kubectl apply --server-side --field-manager=someone-else -f - <<< '{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"mcpservers.mcp-hangar.io","labels":{"helm.sh/chart":"someone-else-owns-this"}}}'
-          echo "label now: $(kubectl get crd mcpservers.mcp-hangar.io -o jsonpath='{.metadata.labels.helm\.sh/chart}')"
+          crd_label() {
+            kubectl get crd mcpservers.mcp-hangar.io -o jsonpath='{.metadata.labels.helm\.sh/chart}'
+          }
+
+          # Observed on v4.2.4 (first CI run of #150): because the h4 install
+          # went in with SSA, helm owns the label via an Apply operation, and a
+          # plain out-of-band SSA write is REFUSED by the apiserver with
+          # 'conflict with "helm": .metadata.labels.helm.sh/chart'. Under a
+          # Helm-3-created release there is no Apply owner and the same write
+          # sails through silently. Assert the refusal -- it's the protection
+          # Helm 4 buys users.
+          echo "::group::plain out-of-band SSA write is refused (conflict with helm)"
+          rc=0
+          out="$(kubectl apply --server-side --field-manager=someone-else -f - <<< '{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"mcpservers.mcp-hangar.io","labels":{"helm.sh/chart":"someone-else-owns-this"}}}' 2>&1)" || rc=$?
+          echo "$out"
+          if [ "$rc" = "0" ]; then
+            echo "::error::expected the plain SSA write on a helm-owned field to be refused with a conflict; it succeeded"
+            exit 1
+          fi
+          grep -q 'conflict with "helm"' <<< "$out" || {
+            echo "::error::the SSA write failed, but not with the expected field-manager conflict"
+            exit 1
+          }
           echo "::endgroup::"
 
-          echo "::group::helm4 upgrade against the competing manager"
+          # A determined out-of-band writer forces the conflict and takes the
+          # field; then helm upgrades.
+          echo "::group::seed the competing manager with --force-conflicts, then helm4 upgrade"
+          kubectl apply --server-side --force-conflicts --field-manager=someone-else -f - <<< '{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"mcpservers.mcp-hangar.io","labels":{"helm.sh/chart":"someone-else-owns-this"}}}'
+          echo "label after seed: $(crd_label)"
           rc=0
           out="$(helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --wait --timeout 300s \
             --set-string podAnnotations.ci-conflict-probe=1 2>&1)" || rc=$?
           echo "$out"
           echo "::endgroup::"
 
-          label="$(kubectl get crd mcpservers.mcp-hangar.io -o jsonpath='{.metadata.labels.helm\.sh/chart}')"
-          echo "OBSERVED: helm4 upgrade exit=${rc}; post-upgrade helm.sh/chart label=${label}"
+          echo "OBSERVED: helm4 upgrade exit=${rc}; post-upgrade helm.sh/chart label=$(crd_label)"
 
       - name: No deprecation warnings from helm4 (h4 lane only)
         if: matrix.lane == 'h4'
@@ -714,7 +744,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::helm4 upgrade core --server-side (the migration step)"
-          helm4 upgrade core ./mcp-hangar -n core --reuse-values --server-side --wait --timeout 300s \
+          helm4 upgrade core ./mcp-hangar -n core --reuse-values --server-side=true --wait --timeout 300s \
             --set-string podAnnotations.ci-ssa-migration=1
           wait_for_core_ready "helm4 --server-side upgrade"
           managers="$(deploy_managers core core-mcp-hangar)"
@@ -790,7 +820,7 @@ jobs:
           # through server-side apply -- exactly the objects where SSA
           # behavior differences would surface for real users.
           echo "::group::helm4 upgrade operator --server-side (the migration step)"
-          helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --server-side --wait --timeout 300s \
+          helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --server-side=true --wait --timeout 300s \
             --set-string podAnnotations.ci-cross-b=1
           kubectl -n op wait --for=condition=Available deployment/op-mcp-hangar-operator --timeout=60s
           managers="$(deploy_managers op op-mcp-hangar-operator)"
