@@ -1,0 +1,10 @@
+# Artifact Hub repository metadata for the mcp-hangar-operator chart
+# (https://artifacthub.io/docs/topics/repositories/ -- OCI: pushed to the
+# chart's GHCR repo under the `artifacthub.io` tag by the
+# artifacthub-metadata workflow). The repositoryID ties the GHCR repo to
+# the Artifact Hub entry and is what grants the "Verified publisher" badge;
+# it is public information, not a secret.
+repositoryID: 600ea971-feff-4030-a94f-afcfefc8795e
+owners:
+  - name: mcp-hangar
+    email: marcin@mcp-hangar.io
