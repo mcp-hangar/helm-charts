@@ -605,7 +605,12 @@ jobs:
           echo "::endgroup::"
 
           # A determined out-of-band writer forces the conflict and takes the
-          # field; then helm upgrades.
+          # field; then helm upgrades. Observed on v4.2.4 (#150): the upgrade
+          # FAILS with an explicit conflict -- 'UPGRADE FAILED: ... Apply
+          # failed with 1 conflict: conflict with "someone-else":
+          # .metadata.labels.helm.sh/chart' -- and the foreign value stays.
+          # Helm 4 does NOT silently take the field back. Asserted below;
+          # WS-4 documents exactly this.
           echo "::group::seed the competing manager with --force-conflicts, then helm4 upgrade"
           kubectl apply --server-side --force-conflicts --field-manager=someone-else -f - <<< '{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"mcpservers.mcp-hangar.io","labels":{"helm.sh/chart":"someone-else-owns-this"}}}'
           echo "label after seed: $(crd_label)"
@@ -616,6 +621,28 @@ jobs:
           echo "::endgroup::"
 
           echo "OBSERVED: helm4 upgrade exit=${rc}; post-upgrade helm.sh/chart label=$(crd_label)"
+          if [ "$rc" = "0" ]; then
+            echo "::error::expected helm4 upgrade to refuse the competing field manager with an explicit conflict; it succeeded"
+            exit 1
+          fi
+          grep -q 'conflict with "someone-else"' <<< "$out" || {
+            echo "::error::helm4 upgrade failed, but not with the expected field-manager conflict"
+            exit 1
+          }
+          if [ "$(crd_label)" != "someone-else-owns-this" ]; then
+            echo "::error::the conflicting upgrade still mutated the foreign-owned label"
+            exit 1
+          fi
+          echo "asserted: explicit conflict error, no silent takeover"
+
+          # Leave the release healthy: take the field back the documented way.
+          helm4 upgrade op ./mcp-hangar-operator -n op --reuse-values --force-conflicts --wait --timeout 300s \
+            --set-string podAnnotations.ci-conflict-probe=2
+          if [ "$(crd_label)" = "someone-else-owns-this" ]; then
+            echo "::error::--force-conflicts did not reclaim the helm-owned label"
+            exit 1
+          fi
+          echo "asserted: helm4 upgrade --force-conflicts reclaims the field"
 
       - name: No deprecation warnings from helm4 (h4 lane only)
         if: matrix.lane == 'h4'

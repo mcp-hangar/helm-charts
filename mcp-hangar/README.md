@@ -157,6 +157,18 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | auth | object | `{}` | Auth configuration rendered into config.yaml `auth:` section |
 | serviceMonitor.enabled | bool | `false` | Enable Prometheus ServiceMonitor |
 
+## Helm versions
+
+Helm 3 and Helm 4 are both supported and CI-tested (install, `helm test`,
+upgrade, rollback under each major, plus the helm3-install → helm4-upgrade
+cross path). A Helm 4 fresh install uses server-side apply; a release created
+by Helm 3 keeps client-side apply across Helm 4 upgrades until you opt in
+with `helm upgrade --server-side=true`. Note `helm3 test --logs` exits
+non-zero on a *passing* test of this chart — Helm 3 deletes the
+`hook-succeeded` test pod before fetching its logs (Helm 4 prints them
+first); run `helm test` without `--logs` under Helm 3. Details and the
+pinned versions: the repo [README](../README.md#helm-versions).
+
 ## License
 
 MIT
