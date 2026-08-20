@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.12](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.11...mcp-hangar-operator-v0.12.12) (2026-08-20)
+
+
+### Fixed
+
+* **operator:** re-sync the vendored CRDs with operator v0.17.0 ([#170](https://github.com/mcp-hangar/helm-charts/issues/170)) ([20544fa](https://github.com/mcp-hangar/helm-charts/commit/20544fa7f3bdfd56aa4fbbd89175051cf8ddae04)), closes [#168](https://github.com/mcp-hangar/helm-charts/issues/168)
+
 ## [0.12.11](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.10...mcp-hangar-operator-v0.12.11) (2026-08-20)
 
 
