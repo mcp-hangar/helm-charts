@@ -57,6 +57,26 @@ persistence:
       size: 8Gi          # so a pod restart loses the event log and the fleet
 ```
 
+### Response Truncation
+
+Optional, core 2.12.0+. Renders a `truncation:` block into config.yaml only
+when enabled; disabled emits nothing.
+
+```yaml
+truncation:
+  enabled: true
+  cacheDriver: redis                          # or `memory` (per-replica)
+  redisUrl: redis://redis.cache.svc:6379/0    # required with `redis`
+```
+
+The Redis here is the **continuation cache** — where the gateway parks full
+responses so a truncated one can be fetched later — not rate limits and not
+sessions. Bring your own (external) Redis: the chart bundles no Redis subchart
+and no Sentinel values. `cacheDriver: redis` without a `redisUrl` fails the
+render, because the gateway would refuse the config anyway. With more than one
+replica, `memory` means a continuation can land on a replica that never cached
+it — use `redis`.
+
 ### Running More Than One Replica
 
 Requires core 2.5.0+, one PostgreSQL every replica shares, and `remote`-mode
@@ -155,6 +175,9 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | coordination.leaseTtlSeconds | int | `15` | Management tenure. Keep identical across replicas |
 | config.unsafeNoAuth | bool | `false` | Allow binding HTTP on non-loopback without auth (demo/insecure only) |
 | auth | object | `{}` | Auth configuration rendered into config.yaml `auth:` section |
+| truncation.enabled | bool | `false` | Render a `truncation:` block into config.yaml (core 2.12.0+). Off emits nothing |
+| truncation.cacheDriver | string | `memory` | Continuation cache backend: `memory` (per-replica) or `redis` |
+| truncation.redisUrl | string | `""` | External Redis URL for the continuation cache. Required when cacheDriver is `redis` — the render fails without it |
 | serviceMonitor.enabled | bool | `false` | Enable Prometheus ServiceMonitor |
 
 ## Helm versions

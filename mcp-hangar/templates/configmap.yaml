@@ -53,3 +53,17 @@ data:
     auth:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    {{- $t := .Values.truncation | default dict }}
+    {{- if $t.enabled }}
+    {{- $driver := $t.cacheDriver | default "memory" }}
+    {{- if and (eq $driver "redis") (not $t.redisUrl) }}
+    {{- fail "truncation.cacheDriver is \"redis\" but truncation.redisUrl is empty. Set truncation.redisUrl (external Redis; the chart ships none) or use cacheDriver: memory." }}
+    {{- end }}
+
+    truncation:
+      enabled: true
+      cache_driver: {{ $driver }}
+      {{- with $t.redisUrl }}
+      redis_url: {{ . | quote }}
+      {{- end }}
+    {{- end }}
