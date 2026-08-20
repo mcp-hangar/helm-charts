@@ -158,9 +158,14 @@ rules:
 
   # ==========================================================================
   # Events (for recording events)
+  #
+  # Both API groups: the operator records through the events.k8s.io/v1
+  # recorder, while controller-runtime leader election still emits via the
+  # legacy core API. Dropping "" breaks leader election.
   # ==========================================================================
   - apiGroups:
       - ""
+      - events.k8s.io
     resources:
       - events
     verbs:
