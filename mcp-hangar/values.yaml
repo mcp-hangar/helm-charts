@@ -205,6 +205,24 @@ mcp_servers: {}
 #     equivalents do.
 auth: {}
 
+# Batch-response truncation (core 2.12.0+), rendered into config.yaml's
+# `truncation:` section only when enabled. Off by default; disabled renders
+# nothing, so core keeps its own defaults.
+#
+# The Redis named here is the CONTINUATION CACHE -- where the gateway parks
+# full responses so a truncated one can be fetched later. It is not used for
+# rate limits or sessions. External Redis only: the chart ships no Redis
+# subchart and no `sentinel:` values (a 5-minute cache does not need Sentinel).
+truncation:
+  enabled: false
+  # `memory` or `redis`. `memory` is per-replica: with more than one replica a
+  # continuation can land on a replica that never cached it -- use `redis`.
+  cacheDriver: memory
+  # Redis connection URL, e.g. redis://redis.cache.svc:6379/0. Required when
+  # cacheDriver is `redis`; the render fails rather than emit a config the
+  # gateway would refuse.
+  redisUrl: ""
+
 # Prometheus ServiceMonitor
 serviceMonitor:
   enabled: false
