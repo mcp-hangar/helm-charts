@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.7](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.6...mcp-hangar-v0.15.7) (2026-08-20)
+
+
+### Added
+
+* **hangar:** optional truncation values with external Redis continuation cache ([#164](https://github.com/mcp-hangar/helm-charts/issues/164)) ([2f5f471](https://github.com/mcp-hangar/helm-charts/commit/2f5f4718e2a666879ccc1a52c68b4ebbe5f7f1ee)), closes [#161](https://github.com/mcp-hangar/helm-charts/issues/161)
+
+
+### Fixed
+
+* **hangar:** default the mcp-hangar chart to core image 2.13.0 ([#169](https://github.com/mcp-hangar/helm-charts/issues/169)) ([65c3467](https://github.com/mcp-hangar/helm-charts/commit/65c3467d8b841661347e4aafb8c9f6df450c90b6))
+
 ## [0.15.6](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.5...mcp-hangar-v0.15.6) (2026-08-18)
 
 

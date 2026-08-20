@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.11](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.10...mcp-hangar-operator-v0.12.11) (2026-08-20)
+
+
+### Fixed
+
+* **operator:** grant events.k8s.io on the operator ClusterRole ([#167](https://github.com/mcp-hangar/helm-charts/issues/167)) ([bb0a186](https://github.com/mcp-hangar/helm-charts/commit/bb0a186ee03744dc0999101277f1645a9326c5cf)), closes [#166](https://github.com/mcp-hangar/helm-charts/issues/166)
+
 ## [0.12.10](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.9...mcp-hangar-operator-v0.12.10) (2026-08-17)
 
 
