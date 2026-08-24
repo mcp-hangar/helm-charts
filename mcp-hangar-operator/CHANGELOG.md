@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.13](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.12...mcp-hangar-operator-v0.12.13) (2026-08-24)
+
+
+### Fixed
+
+* **operator:** re-vendor the CRDs for operator v0.17.1 ([#178](https://github.com/mcp-hangar/helm-charts/issues/178)) ([21dcbaa](https://github.com/mcp-hangar/helm-charts/commit/21dcbaa497aedba6a708f94a88a9ac4e2d63e43a))
+
 ## [0.12.12](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.11...mcp-hangar-operator-v0.12.12) (2026-08-20)
 
 
