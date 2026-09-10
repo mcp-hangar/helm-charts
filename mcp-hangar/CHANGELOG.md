@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.18](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.17...mcp-hangar-v0.15.18) (2026-09-10)
+
+
+### Fixed
+
+* **hangar:** drop the dashboard panels and alerts on four metrics nothing emits ([#201](https://github.com/mcp-hangar/helm-charts/issues/201)) ([8b23b1f](https://github.com/mcp-hangar/helm-charts/commit/8b23b1f65181d49272102cc473f68892ac5f3736))
+
 ## [0.15.17](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.16...mcp-hangar-v0.15.17) (2026-09-09)
 
 
