@@ -265,7 +265,7 @@
       "id": 8,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 18
       },
@@ -309,218 +309,6 @@
       ]
     },
     {
-      "type": "timeseries",
-      "title": "Behavioral deviations/s",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 9,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 18
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mcp_hangar_behavioral_deviations_total[5m])) by (deviation_type)",
-          "legendFormat": "{{deviation_type}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Tool schema drifts/s",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 10,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 26
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mcp_hangar_tool_schema_drifts_total[5m])) by (change_type)",
-          "legendFormat": "{{change_type}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Detection rule matches/s by severity",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 11,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 26
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mcp_hangar_detection_rule_matches_total[5m])) by (severity)",
-          "legendFormat": "{{severity}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Enforcement actions/s",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "id": 12,
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 34
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mcp_hangar_enforcement_actions_total[5m])) by (action)",
-          "legendFormat": "{{action}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
       "type": "row",
       "title": "Tool Access & Projection",
       "collapsed": false,
@@ -528,7 +316,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 26
       },
       "id": 13,
       "panels": []
@@ -545,7 +333,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 27
       },
       "fieldConfig": {
         "defaults": {
@@ -598,7 +386,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 27
       },
       "fieldConfig": {
         "defaults": {
@@ -651,7 +439,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 51
+        "y": 35
       },
       "fieldConfig": {
         "defaults": {
@@ -708,7 +496,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 43
       },
       "id": 17,
       "panels": []
@@ -725,7 +513,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 60
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -789,7 +577,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 60
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -842,7 +630,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 68
+        "y": 52
       },
       "fieldConfig": {
         "defaults": {
@@ -895,7 +683,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 68
+        "y": 52
       },
       "fieldConfig": {
         "defaults": {
