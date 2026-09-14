@@ -293,6 +293,14 @@ groups:
   - name: mcp-hangar-availability
     rules:
       # --- Provider state ---
+      # mcp_hangar_mcp_server_state: 0=cold, 1=initializing, 2=ready,
+      # 3=degraded, 4=dead. Since mcp-hangar/mcp-hangar#1399 a server Hangar
+      # gives up on reads 4, not 0, and so does one whose process crashed or
+      # whose start failed. 0 means only "not running and not failing", so do
+      # not alert on `state == 0`.
+      #
+      # When the recovery saga gives up, the server moves from 3 to 4, so
+      # MCPHangarProviderDegraded resolves as MCPHangarProviderDead fires.
       - alert: MCPHangarProviderDegraded
         expr: mcp_hangar_mcp_server_state == 3
         for: 5m
@@ -303,14 +311,47 @@ groups:
           description: "Provider has been in the degraded state (3) for 5m"
           runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
 
+      - alert: MCPHangarProviderDead
+        expr: mcp_hangar_mcp_server_state == 4
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Provider {{ $labels.mcp_server }} is dead"
+          description: "{{ $labels.mcp_server }} is dead (state 4): Hangar gave up on it, its process crashed, its start failed, or a capability block stopped it. Health checks skip a dead server. Read its last error in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs and the health block of hangar_details, fix the cause, then start it with hangar_start."
+          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-dead"
+
+      # When Hangar last saw the server working: a passing health check, a
+      # completed start or a successful tool call. Kept when the server goes
+      # cold or dead. A cold server is not probed, so its value ages; the
+      # `unless` leaves cold servers out.
+      #
+      # Keep the default matching. `unless on(mcp_server)` drops `instance`, so
+      # with several replicas a server cold on one would hide it dead on
+      # another. A server that was never healthy has no series here;
+      # MCPHangarProviderDead covers it.
+      - alert: MCPHangarProviderNotSeenHealthy
+        expr: |
+          time() - mcp_hangar_mcp_server_last_healthy_timestamp_seconds > 900
+            unless mcp_hangar_mcp_server_state == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Provider {{ $labels.mcp_server }} not seen healthy for over 15m"
+          description: "No passing health check, completed start or successful tool call for {{ $value | humanizeDuration }}, and the server is not cold. Check its state: 4 is dead (MCPHangarProviderDead), 3 is degraded, 1 is stuck starting. Read its logs in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs."
+          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
+
+      # Needs a dead server, not just nothing up: a pool that is all cold (no
+      # calls yet, or every server reaped for being idle) reads `up` 0 too.
       - alert: MCPHangarAllProvidersDown
-        expr: sum(mcp_hangar_mcp_server_up) == 0 and sum(mcp_hangar_mcp_server_info) > 0
+        expr: sum(mcp_hangar_mcp_server_up) == 0 and count(mcp_hangar_mcp_server_state == 4) > 0
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "All providers are down"
-          description: "No provider reports up while at least one is configured"
+          description: "No provider reports up, and at least one is dead"
           runbook_url: "https://docs.mcp-hangar.io/runbooks/not-responding"
 
       # --- Discovery ---
