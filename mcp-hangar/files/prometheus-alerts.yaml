@@ -319,6 +319,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} is dead"
           description: "{{ $labels.mcp_server }} is dead (state 4): Hangar gave up on it, its process crashed, its start failed, or a capability block stopped it. Health checks skip a dead server. Read its last error in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs and the health block of hangar_details, fix the cause, then start it with hangar_start."
+          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-dead"
 
       # When Hangar last saw the server working: a passing health check, a
       # completed start or a successful tool call. Kept when the server goes
@@ -339,6 +340,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} not seen healthy for over 15m"
           description: "No passing health check, completed start or successful tool call for {{ $value | humanizeDuration }}, and the server is not cold. Check its state: 4 is dead (MCPHangarProviderDead), 3 is degraded, 1 is stuck starting. Read its logs in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs."
+          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
 
       # Needs a dead server, not just nothing up: a pool that is all cold (no
       # calls yet, or every server reaped for being idle) reads `up` 0 too.
