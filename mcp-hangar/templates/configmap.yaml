@@ -41,6 +41,11 @@ data:
       renew_interval_s: {{ .Values.coordination.renewIntervalSeconds }}
       renew_deadline_s: {{ .Values.coordination.renewDeadlineSeconds }}
     {{- end }}
+    {{- with include "mcp-hangar.shutdown.gracefulTimeoutSeconds" . }}
+
+    http:
+      graceful_shutdown_timeout_s: {{ . }}
+    {{- end }}
 
     mcp_servers:
       {{- if .Values.mcp_servers }}
