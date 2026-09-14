@@ -30,8 +30,8 @@ KUBERNETES_DEFAULT_GRACE = 30
 
 # The first core that reads http.graceful_shutdown_timeout_s, and the last that
 # does not. Keep NEW_CORE in step with the guard in templates/_shutdown.tpl.
-NEW_CORE = "image.tag=2.20.0"
-OLD_CORE = "image.tag=2.19.1"
+NEW_CORE = "image.tag=2.21.0"
+OLD_CORE = "image.tag=2.20.0"
 
 BOUND = "shutdown.gracefulTimeoutSeconds"
 PRE_STOP = "shutdown.preStopSleepSeconds"
@@ -74,7 +74,7 @@ REFUSED: dict[str, tuple[list[str], str]] = {
     "a bound as a string": (["--set", NEW_CORE, "--set-string", f"{BOUND}=90"], "whole number of seconds"),
     "a negative preStop": (["--set", f"{PRE_STOP}=-1"], "whole number of seconds"),
     "a zero grace period": (["--set", f"{GRACE}=0"], "whole number of seconds"),
-    "a bound on a core that does not read it": (["--set", OLD_CORE, "--set", f"{BOUND}=90"], "needs core 2.20.0"),
+    "a bound on a core that does not read it": (["--set", OLD_CORE, "--set", f"{BOUND}=90"], "needs core 2.21.0"),
 }
 
 

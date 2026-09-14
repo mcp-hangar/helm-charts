@@ -141,7 +141,7 @@ config:
 # (set, computed, or Kubernetes' default of 30) is not.
 shutdown:
   # Seconds core waits for in-flight requests after SIGTERM before cancelling
-  # them. Rendered as `http.graceful_shutdown_timeout_s` (core 2.20.0+; the
+  # them. Rendered as `http.graceful_shutdown_timeout_s` (core 2.21.0+; the
   # render fails on an older image.tag, which would ignore it). Unset renders
   # nothing: core keeps uvicorn's default and waits without a bound, until the
   # SIGKILL at the end of the grace period.

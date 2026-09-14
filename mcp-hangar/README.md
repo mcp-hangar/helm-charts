@@ -160,7 +160,7 @@ core waits for the requests already in flight. The kubelet kills the pod
 `terminationGracePeriodSeconds` after the sleep started.
 
 To bound that wait, set it once. The chart renders it into core's
-`http.graceful_shutdown_timeout_s` (core 2.20.0+) and sizes the grace period
+`http.graceful_shutdown_timeout_s` (core 2.21.0+) and sizes the grace period
 to hold it:
 
 ```yaml
@@ -201,7 +201,7 @@ force, and the 5 second sleep comes out of it.
 | persistence.postgresql.existingSecret | string | `""` | Secret holding the password; keeps it out of the ConfigMap |
 | coordination.enabled | bool | `false` | Declares these replicas are one gateway. Required for more than one replica |
 | coordination.leaseTtlSeconds | int | `15` | Management tenure. Keep identical across replicas |
-| shutdown.gracefulTimeoutSeconds | int | `null` | Seconds core waits for in-flight requests after SIGTERM, rendered as `http.graceful_shutdown_timeout_s` (core 2.20.0+). Unset waits without a bound |
+| shutdown.gracefulTimeoutSeconds | int | `null` | Seconds core waits for in-flight requests after SIGTERM, rendered as `http.graceful_shutdown_timeout_s` (core 2.21.0+). Unset waits without a bound |
 | shutdown.preStopSleepSeconds | int | `5` | Seconds the `preStop` hook sleeps before SIGTERM, while the pod leaves the Service endpoints. `0` renders no hook |
 | shutdown.terminationGracePeriodSeconds | int | `null` | The pod's grace period. Unset: `preStopSleepSeconds + gracefulTimeoutSeconds + 10` when a bound is set, Kubernetes' default of 30 when not. The render fails unless it is longer than `preStopSleepSeconds + gracefulTimeoutSeconds` |
 | config.unsafeNoAuth | bool | `false` | Allow binding HTTP on non-loopback without auth (demo/insecure only) |

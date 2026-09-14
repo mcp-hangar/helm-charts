@@ -46,8 +46,8 @@ grace period did. The render fails instead of shipping it.
          under HANGAR_CONFIG_STRICT it refuses to start. Refused here instead,
          as the persistence/coordination keys are in _cluster.tpl. */ -}}
   {{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
-  {{- if and (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+" $tag) (semverCompare "< 2.20.0-0" $tag) -}}
-    {{- fail (printf "\n\nshutdown.gracefulTimeoutSeconds needs core 2.20.0 or newer, and the image resolves to %q.\n\nAn older core does not read http.graceful_shutdown_timeout_s: it warns, ignores\nit and waits without a bound, or refuses to start under HANGAR_CONFIG_STRICT.\n\nSet image.tag to 2.20.0 or newer, or leave shutdown.gracefulTimeoutSeconds unset.\n" $tag) -}}
+  {{- if and (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+" $tag) (semverCompare "< 2.21.0-0" $tag) -}}
+    {{- fail (printf "\n\nshutdown.gracefulTimeoutSeconds needs core 2.21.0 or newer, and the image resolves to %q.\n\nAn older core does not read http.graceful_shutdown_timeout_s: it warns, ignores\nit and waits without a bound, or refuses to start under HANGAR_CONFIG_STRICT.\n\nSet image.tag to 2.21.0 or newer, or leave shutdown.gracefulTimeoutSeconds unset.\n" $tag) -}}
   {{- end -}}
 {{- end -}}
 {{- $bound -}}
