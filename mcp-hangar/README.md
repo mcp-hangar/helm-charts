@@ -152,6 +152,34 @@ answers `400 Invalid host header` from a pod that is Ready.
 
 Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook/25-multiple-replicas).
 
+### Graceful Shutdown
+
+A rollout stops each pod with a `preStop` sleep first, so the pod leaves the
+Service endpoints before it stops accepting requests. Then SIGTERM, after which
+core waits for the requests already in flight. The kubelet kills the pod
+`terminationGracePeriodSeconds` after the sleep started.
+
+To bound that wait, set it once. The chart renders it into core's
+`http.graceful_shutdown_timeout_s` (core 2.21.0+) and sizes the grace period
+to hold it:
+
+```yaml
+shutdown:
+  gracefulTimeoutSeconds: 90      # renders terminationGracePeriodSeconds: 105
+  preStopSleepSeconds: 5          # the default
+```
+
+The grace period is `preStopSleepSeconds + gracefulTimeoutSeconds + 10`,
+unless you set `shutdown.terminationGracePeriodSeconds` yourself. The render
+fails when the grace period in force is not longer than
+`preStopSleepSeconds + gracefulTimeoutSeconds`, because a shorter one kills
+the pod while core is still waiting. That includes Kubernetes' default of 30
+when the chart renders none.
+
+Leave `gracefulTimeoutSeconds` unset to keep core waiting without a bound.
+The chart then renders no grace period, so Kubernetes' default of 30 stays in
+force, and the 5 second sleep comes out of it.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -173,6 +201,9 @@ Full recipe: [Running more than one replica](https://mcp-hangar.io/docs/cookbook
 | persistence.postgresql.existingSecret | string | `""` | Secret holding the password; keeps it out of the ConfigMap |
 | coordination.enabled | bool | `false` | Declares these replicas are one gateway. Required for more than one replica |
 | coordination.leaseTtlSeconds | int | `15` | Management tenure. Keep identical across replicas |
+| shutdown.gracefulTimeoutSeconds | int | `null` | Seconds core waits for in-flight requests after SIGTERM, rendered as `http.graceful_shutdown_timeout_s` (core 2.21.0+). Unset waits without a bound |
+| shutdown.preStopSleepSeconds | int | `5` | Seconds the `preStop` hook sleeps before SIGTERM, while the pod leaves the Service endpoints. `0` renders no hook |
+| shutdown.terminationGracePeriodSeconds | int | `null` | The pod's grace period. Unset: `preStopSleepSeconds + gracefulTimeoutSeconds + 10` when a bound is set, Kubernetes' default of 30 when not. The render fails unless it is longer than `preStopSleepSeconds + gracefulTimeoutSeconds` |
 | config.unsafeNoAuth | bool | `false` | Allow binding HTTP on non-loopback without auth (demo/insecure only) |
 | auth | object | `{}` | Auth configuration rendered into config.yaml `auth:` section |
 | truncation.enabled | bool | `false` | Render a `truncation:` block into config.yaml (core 2.12.0+). Off emits nothing |
