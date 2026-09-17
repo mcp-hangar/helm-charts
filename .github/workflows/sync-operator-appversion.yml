@@ -87,9 +87,11 @@ jobs:
 
       - name: Bump appVersion
         if: steps.v.outputs.behind == 'true'
+        env:
+          OP: ${{ steps.v.outputs.op }}
         run: |
           set -euo pipefail
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.v.outputs.op }}\"/" mcp-hangar-operator/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${OP}\"/" mcp-hangar-operator/Chart.yaml
           grep -n '^appVersion:' mcp-hangar-operator/Chart.yaml
 
       - name: Open PR
