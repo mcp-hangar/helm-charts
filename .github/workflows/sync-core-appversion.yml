@@ -7,6 +7,11 @@
 # chart is behind, opens a PR bumping appVersion. release-please then cuts the
 # chart version. Pull-based (no cross-repo token needed to read a public release);
 # runs daily and on demand.
+#
+# SIBLING: `.github/workflows/sync-operator-appversion.yml` does this same job for
+# the mcp-hangar-operator chart against operator releases. The two are
+# near-identical by design - change one and change the other, or they drift apart
+# silently.
 name: sync-core-appversion
 
 on:
