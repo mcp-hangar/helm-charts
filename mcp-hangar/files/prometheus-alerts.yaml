@@ -67,15 +67,17 @@ groups:
           runbook_url: "https://docs.mcp-hangar.io/runbooks/circuit-breaker"
 
       # --- Health Check Critical ---
-      - alert: MCPHangarProviderUnhealthy
-        expr: mcp_hangar_health_check_consecutive_failures > 5
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Provider {{ $labels.mcp_server }} critically unhealthy"
-          description: "{{ $value }} consecutive health check failures"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
+      # `MCPHangarProviderUnhealthy` stood here, thresholding
+      # `mcp_hangar_health_check_consecutive_failures > 5`. It could never fire.
+      # The gauge stops at `max_consecutive_failures` (core default 3): the check
+      # that reaches it flips the server to DEGRADED, and `health_check()` returns
+      # early for anything that is not READY, so no later failure is ever
+      # observed. Reaching 6 was impossible on a default install, and the rule
+      # looked correct in this file the whole time (#203).
+      #
+      # The condition it was reaching for -- Hangar has given up on this server --
+      # is MCPHangarProviderDead, on `mcp_hangar_mcp_server_state == 4`, in the
+      # availability group below.
 
   # ============================================================================
   # WARNING ALERTS - Notify via Slack/email
@@ -83,8 +85,19 @@ groups:
   - name: mcp-hangar-warning
     rules:
       # --- Provider Health ---
+      # `>= 1`, not a count of failures. `max_consecutive_failures` is per-server
+      # configuration (core default 3), so this chart cannot know any given
+      # server's ceiling, and one number is wrong for every server that sets its
+      # own. The gauge also cannot pass that ceiling -- see the note in the
+      # critical group -- so `> 2` fired only on an install that left the default
+      # in place, and then latched: a DEGRADED server is never probed again, so
+      # the series holds its last value until a restart makes a check pass.
+      #
+      # What this says is simply "health checks are failing right now", which is
+      # true at any configured ceiling and clears on the first passing check --
+      # the only thing that resets the gauge to 0 (#203).
       - alert: MCPHangarHighConsecutiveFailures
-        expr: mcp_hangar_health_check_consecutive_failures > 2
+        expr: mcp_hangar_health_check_consecutive_failures >= 1
         for: 2m
         labels:
           severity: warning

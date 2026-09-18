@@ -1,0 +1,117 @@
+# Unit tests for files/prometheus-alerts.yaml, run by `promtool test rules`.
+#
+# `promtool check rules` proves an expression parses. It cannot prove one can
+# ever fire, and that is exactly how this chart shipped a critical alert that
+# never did: `mcp_hangar_health_check_consecutive_failures > 5` on a gauge that
+# stops at 3 parses perfectly and pages nobody (#203).
+#
+# So these tests drive the timeline measured on a live environment in
+# mcp-hangar/mcp-hangar#1325 -- failures, the give-up, then silence -- and assert
+# what is firing ten minutes in, when the outage is still going on.
+#
+# The gauge's shape is core's, not an invention here: `record_failure()`
+# increments and the event carries the incremented value, the check that reaches
+# `max_consecutive_failures` flips the server to DEGRADED, and `health_check()`
+# returns early for anything that is not READY. So the series rises 1, 2, 3 and
+# then holds 3 forever, because nothing probes the server again.
+rule_files:
+  - prometheus-alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # The measured outage: three failing checks, the give-up, then nothing.
+  - interval: 1m
+    name: a provider that stops answering keeps its warning firing
+    input_series:
+      - series: 'mcp_hangar_health_check_consecutive_failures{mcp_server="notes"}'
+        # 1, 2, 3 then frozen: the gauge is only written when a check runs.
+        values: "1 2 3x13"
+    alert_rule_test:
+      # Ten minutes in, the provider is still unreachable and the alert must
+      # still be firing. The old rate-window shapes went quiet here.
+      - eval_time: 10m
+        alertname: MCPHangarHighConsecutiveFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              mcp_server: notes
+            exp_annotations:
+              summary: "Provider notes failing health checks"
+              description: "3 consecutive health check failures"
+              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+
+  # A server with its own, lower ceiling. The old `> 2` was silent for this one
+  # no matter how broken it was; `>= 1` is not.
+  - interval: 1m
+    name: a server with max_consecutive_failures below the old threshold still alerts
+    input_series:
+      - series: 'mcp_hangar_health_check_consecutive_failures{mcp_server="strict"}'
+        # Ceiling of 2: the gauge never reaches 3, so `> 2` could not fire.
+        values: "1 2x13"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MCPHangarHighConsecutiveFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              mcp_server: strict
+            exp_annotations:
+              summary: "Provider strict failing health checks"
+              description: "2 consecutive health check failures"
+              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+
+  # A passing check is the only thing that resets the gauge, so it has to be the
+  # thing that clears the alert.
+  - interval: 1m
+    name: a recovered provider clears the warning
+    input_series:
+      - series: 'mcp_hangar_health_check_consecutive_failures{mcp_server="notes"}'
+        values: "1 2 3 3 3 0x10"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: MCPHangarHighConsecutiveFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              mcp_server: notes
+            exp_annotations:
+              summary: "Provider notes failing health checks"
+              description: "3 consecutive health check failures"
+              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+      # Back to 0 and stays there: nothing firing.
+      - eval_time: 12m
+        alertname: MCPHangarHighConsecutiveFailures
+        exp_alerts: []
+
+  # The critical half of #203: what MCPHangarProviderUnhealthy was reaching for.
+  # A given-up server reads state 4 and keeps reading it, so this stays firing
+  # for as long as the condition is true.
+  - interval: 1m
+    name: a given-up provider pages, and keeps paging
+    input_series:
+      - series: 'mcp_hangar_mcp_server_state{mcp_server="notes"}'
+        # READY, degraded, then dead and left there.
+        values: "2 2 3 3 4x12"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MCPHangarProviderDead
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              mcp_server: notes
+            exp_annotations:
+              summary: "Provider notes is dead"
+              description: "notes is dead (state 4): Hangar gave up on it, its process crashed, its start failed, or a capability block stopped it. Health checks skip a dead server. Read its last error in GET /api/mcp_servers/notes/logs and the health block of hangar_details, fix the cause, then start it with hangar_start."
+              runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-dead"
+
+  # A cold server is not a broken one. It must not page.
+  - interval: 1m
+    name: a cold provider does not page
+    input_series:
+      - series: 'mcp_hangar_mcp_server_state{mcp_server="idle-one"}'
+        values: "0x15"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MCPHangarProviderDead
+        exp_alerts: []
