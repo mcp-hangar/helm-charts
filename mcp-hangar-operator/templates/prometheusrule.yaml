@@ -28,7 +28,13 @@ spec:
             summary: "MCP Operator reconcile errors detected"
             description: "Controller {{ "{{" }} $labels.controller {{ "}}" }} has reconcile errors (current value: {{ "{{" }} $value {{ "}}" }})"
         - alert: MCPOperatorDown
-          expr: up{job="{{ include "mcp-hangar-operator.fullname" . }}"} == 0
+          # `-metrics` is not decoration: the ServiceMonitor sets no `jobLabel`,
+          # so Prometheus Operator names the job after the Service it selects,
+          # and that Service is `{{ include "mcp-hangar-operator.fullname" . }}-metrics`
+          # (templates/service.yaml). Without the suffix this equality matcher
+          # selected nothing and the alert could not fire at all (#213).
+          # scripts/check_operator_job_label.py holds the two together.
+          expr: up{job="{{ include "mcp-hangar-operator.fullname" . }}-metrics"} == 0
           for: 5m
           labels:
             severity: critical

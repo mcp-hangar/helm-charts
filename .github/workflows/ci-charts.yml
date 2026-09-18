@@ -180,6 +180,16 @@ jobs:
         if: matrix.chart == 'mcp-hangar'
         run: python3 scripts/check_shutdown_ordering.py helm
 
+      # An alert that matches on a `job` the ServiceMonitor never produces is
+      # valid PromQL selecting nothing: it renders, it applies, promtool passes
+      # it, and it cannot fire (#213). Nothing else here can see that -- it is a
+      # relation between two objects, and the promtool step below is guarded by
+      # a `files/` directory the operator chart does not have, so operator rules
+      # reach no checker at all.
+      - name: Operator job label (alerts match what the ServiceMonitor produces)
+        if: matrix.chart == 'mcp-hangar-operator'
+        run: python3 scripts/check_operator_job_label.py helm
+
       # `helm lint` and `kubeconform` both stop at the shape of the object. The
       # alert rules inside it are one opaque string to them: a typo in a PromQL
       # expression renders fine, applies fine, and is then refused by Prometheus
