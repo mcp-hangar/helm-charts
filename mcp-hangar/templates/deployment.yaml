@@ -33,6 +33,11 @@ spec:
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken | default false }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- /* Always evaluated, so the shutdown ordering is checked even when
+             nothing is rendered. See _shutdown.tpl. */}}
+      {{- with include "mcp-hangar.shutdown.terminationGracePeriodSeconds" . }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -74,6 +79,15 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 3
             failureThreshold: 10
+          {{- $preStopSleep := include "mcp-hangar.shutdown.preStopSleepSeconds" . | atoi }}
+          {{- if gt $preStopSleep 0 }}
+          lifecycle:
+            preStop:
+              # Out of the Service endpoints before SIGTERM starts the drain,
+              # so no new request arrives at a pod that is closing.
+              exec:
+                command: ["sleep", "{{ $preStopSleep }}"]
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

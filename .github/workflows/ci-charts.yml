@@ -170,6 +170,16 @@ jobs:
           helm template t "${{ matrix.chart }}" -f "${{ matrix.chart }}/ci-cluster-values.yaml" \
             | kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBERNETES_VERSION" -summary -
 
+      # The grace period has to outlast the preStop sleep plus core's graceful
+      # shutdown bound, or the kubelet kills the pod while core is still waiting
+      # for its requests (mcp-hangar/mcp-hangar#1447). kubeconform cannot see
+      # that: it is a relation between two objects. The script reads the three
+      # numbers back out of each rendered shape and checks the rule, then checks
+      # that the shapes which break it fail to render.
+      - name: Shutdown ordering (grace period outlasts preStop + bound)
+        if: matrix.chart == 'mcp-hangar'
+        run: python3 scripts/check_shutdown_ordering.py helm
+
       # `helm lint` and `kubeconform` both stop at the shape of the object. The
       # alert rules inside it are one opaque string to them: a typo in a PromQL
       # expression renders fine, applies fine, and is then refused by Prometheus

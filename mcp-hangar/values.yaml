@@ -127,6 +127,34 @@ config:
   #     - hangar.example.com
   trustedHosts: []
 
+# How a pod stops. A rollout ends each pod in this order:
+#
+#   1. the preStop sleep, while the pod leaves the Service endpoints, so new
+#      requests stop arriving before the gateway stops accepting them;
+#   2. SIGTERM, after which core waits up to gracefulTimeoutSeconds for the
+#      requests already in flight, then stops its servers;
+#   3. the kubelet's SIGKILL, terminationGracePeriodSeconds after step 1
+#      started.
+#
+# So the grace period must be longer than preStopSleepSeconds +
+# gracefulTimeoutSeconds, and the render fails when the grace period in force
+# (set, computed, or Kubernetes' default of 30) is not.
+shutdown:
+  # Seconds core waits for in-flight requests after SIGTERM before cancelling
+  # them. Rendered as `http.graceful_shutdown_timeout_s` (core 2.21.0+; the
+  # render fails on an older image.tag, which would ignore it). Unset renders
+  # nothing: core keeps uvicorn's default and waits without a bound, until the
+  # SIGKILL at the end of the grace period.
+  gracefulTimeoutSeconds: null
+  # Seconds the preStop hook sleeps before SIGTERM. 0 renders no hook.
+  preStopSleepSeconds: 5
+  # The pod's grace period. Unset: computed as preStopSleepSeconds +
+  # gracefulTimeoutSeconds + 10 (for core's own cleanup) when a bound is set,
+  # and not rendered when none is, which keeps Kubernetes' default of 30. Set
+  # it to override. The render fails unless it is longer than
+  # preStopSleepSeconds + gracefulTimeoutSeconds.
+  terminationGracePeriodSeconds: null
+
 # Storage, as one decision (core 2.5.0+). Leave `backend` empty to keep the
 # pre-2.5.0 behaviour, where each subsystem configured its own storage.
 #
