@@ -7,6 +7,11 @@
 # chart is behind, opens a PR bumping appVersion. release-please then cuts the
 # chart version. Pull-based (no cross-repo token needed to read a public release);
 # runs daily and on demand.
+#
+# SIBLING: `.github/workflows/sync-operator-appversion.yml` does this same job for
+# the mcp-hangar-operator chart against operator releases. The two are
+# near-identical by design - change one and change the other, or they drift apart
+# silently.
 name: sync-core-appversion
 
 on:
@@ -45,7 +50,25 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          core="$(gh release view -R mcp-hangar/mcp-hangar --json tagName --jq '.tagName' | sed 's/^v//')"
+          # `gh api .../releases/latest`, not `gh release view`: the REST "latest"
+          # endpoint is defined to exclude drafts and prereleases, whereas
+          # `gh release view` reports whatever release is newest. A candidate is
+          # briefly flagged Latest between the release job creating it and the flag
+          # being corrected, and that window is enough for a scheduled run to bump
+          # appVersion to a candidate — the website's `sync-core-version` opened a PR
+          # inside exactly that window for core v2.5.0-rc.1. Here the blast radius is
+          # larger: appVersion is the image tag a cluster runs. AGENTS.md is explicit
+          # that appVersion "tracks the last STABLE release -- never a candidate".
+          rel="$(gh api repos/mcp-hangar/mcp-hangar/releases/latest)"
+          core="$(printf '%s' "$rel" | jq -r '.tag_name' | sed 's/^v//')"
+          pre="$(printf '%s' "$rel" | jq -r '.prerelease')"
+          draft="$(printf '%s' "$rel" | jq -r '.draft')"
+          # Belt and braces: /releases/latest should never hand back either flag set.
+          # If it somehow does, stop rather than ship a candidate image.
+          if [ "$pre" != "false" ] || [ "$draft" != "false" ]; then
+            echo "::error::latest core release $core is flagged prerelease=$pre draft=$draft — refusing to bump."
+            exit 1
+          fi
           cur="$(awk -F'"' '/^appVersion:/{print $2; exit}' mcp-hangar/Chart.yaml)"
           echo "core=$core" >> "$GITHUB_OUTPUT"
           echo "cur=$cur"   >> "$GITHUB_OUTPUT"
@@ -60,9 +83,11 @@ jobs:
 
       - name: Bump appVersion
         if: steps.v.outputs.behind == 'true'
+        env:
+          CORE: ${{ steps.v.outputs.core }}
         run: |
           set -euo pipefail
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.v.outputs.core }}\"/" mcp-hangar/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${CORE}\"/" mcp-hangar/Chart.yaml
           grep -n '^appVersion:' mcp-hangar/Chart.yaml
 
       - name: Open PR
