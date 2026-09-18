@@ -230,6 +230,16 @@ jobs:
           EOF
           promtool check rules /tmp/rules.yaml
 
+      # `check rules` proves the expressions parse. It cannot prove one can ever
+      # fire -- `> 5` on a gauge that stops at 3 parses perfectly and pages
+      # nobody, which is how this chart carried a dead critical alert (#203).
+      # These run against the source file, which is what the template inserts
+      # verbatim, and drive a measured outage timeline rather than a threshold.
+      - name: promtool test rules (alert unit tests)
+        if: hashFiles(format('{0}/files/prometheus-alerts.test.yaml', matrix.chart)) != ''
+        working-directory: ${{ matrix.chart }}/files
+        run: promtool test rules prometheus-alerts.test.yaml
+
   # There should be zero template-level divergence between the majors --
   # assert it, don't assume it. If Helm 4 ever renders differently we want a
   # red build here, not a surprised user.
