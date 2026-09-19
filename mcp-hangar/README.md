@@ -180,6 +180,25 @@ Leave `gracefulTimeoutSeconds` unset to keep core waiting without a bound.
 The chart then renders no grace period, so Kubernetes' default of 30 stays in
 force, and the 5 second sleep comes out of it.
 
+### Monitoring
+
+`serviceMonitor.enabled` ships a ServiceMonitor; `prometheusRule.enabled` ships
+the maintained alert rules. The rules match a fixed `job="mcp-hangar"`, so the
+ServiceMonitor sets `jobLabel: mcp-hangar.io/job` and the Service carries that
+label with the literal value `mcp-hangar`.
+
+That value is deliberately not configurable. The alert file is inserted
+verbatim (`.Files.Get` renders no template directives), so a `job` that varied
+with the release name — as it did before — left every install not named
+`mcp-hangar` with alerts that matched nothing and never fired.
+
+**Upgrading:** if your release is *not* named `mcp-hangar`, the `job` label on
+these series changes from `<release>-mcp-hangar` to `mcp-hangar`. Dashboards,
+recording rules and silences that select on the old value need updating; series
+history under the old label is unaffected but stops receiving samples. Two
+releases in one namespace now share this `job`, and are told apart by
+`instance`, `namespace` and `pod` as before.
+
 ## Values
 
 | Key | Type | Default | Description |

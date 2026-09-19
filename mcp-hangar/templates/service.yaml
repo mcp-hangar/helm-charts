@@ -4,6 +4,15 @@ metadata:
   name: {{ include "mcp-hangar.fullname" . }}
   labels:
     {{- include "mcp-hangar.labels" . | nindent 4 }}
+    # The `job` label Prometheus gives these series, via the ServiceMonitor's
+    # `jobLabel`. A LITERAL on purpose: every other name here bends to the
+    # release name or `nameOverride`, and the alert file cannot follow, because
+    # `.Files.Get` inserts it verbatim and renders no template directives. An
+    # alert matching `job="mcp-hangar"` was therefore silent on every install
+    # not named `mcp-hangar` (#224). scripts/check_job_labels.py holds the two
+    # together. Two releases in one namespace share this `job` and are told
+    # apart by `instance` and `namespace`, as they were by `pod` before.
+    mcp-hangar.io/job: mcp-hangar
 spec:
   type: {{ .Values.service.type }}
   {{- with .Values.service.sessionAffinity }}

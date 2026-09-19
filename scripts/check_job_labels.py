@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
-"""Assert the operator's alerts match the `job` its ServiceMonitor produces.
+"""Assert each chart's alerts match the `job` its ServiceMonitor produces.
 
-`MCPOperatorDown` asked for `up{job="<fullname>"}` while the ServiceMonitor
-names the job after the Service it selects, which is `<fullname>-metrics`. A
-PromQL equality matcher that selects nothing is still valid PromQL: it renders,
-it applies, promtool passes it, and the alert simply never fires. It was
-`severity: critical` and had never been able to fire (#213).
+A PromQL equality matcher that selects nothing is still valid PromQL: it
+renders, it applies, promtool passes it, and the alert simply never fires. Both
+charts shipped one.
 
-Nothing already in CI could catch that. `helm lint` and kubeconform stop at the
-shape of the object, promtool only parses the expression, and the promtool step
-is guarded by `hashFiles('<chart>/files/prometheus-alerts.yaml')` -- which the
-operator chart does not have, since it keeps its rules inline. So this reads the
-job out of the rendered ServiceMonitor the way Prometheus Operator would, reads
-every `job=` matcher out of the rendered rules, and fails when they disagree.
+- `mcp-hangar-operator`: `MCPOperatorDown` asked for `up{job="<fullname>"}`
+  while the ServiceMonitor names the job after the Service it selects, which is
+  `<fullname>-metrics` (#213).
+- `mcp-hangar`: three alerts, one of them `severity: critical`, match a fixed
+  `job="mcp-hangar"` while the job was `<release>-mcp-hangar` -- correct only
+  for a release named `mcp-hangar` (#224). That file cannot be templated:
+  `.Files.Get` inserts it verbatim, so the fix is a `jobLabel` pointing at a
+  literal label the chart controls, and this check is what keeps the two ends
+  tied together.
 
-Two release names are rendered on purpose. `mcp-hangar-operator` is the one that
-collapses through the `fullname` helper; `prod` is the one that does not. A
-matcher that is right for only one of them is the same defect wearing a
-different hat (see mcp-hangar/helm-charts#224 for that shape in the other
-chart).
+Nothing else in CI can catch this. `helm lint` and kubeconform stop at the shape
+of the object, and promtool only parses the expression -- a matcher selecting
+nothing parses perfectly.
 
-Usage: scripts/check_operator_job_label.py [HELM]    (HELM defaults to `helm`)
+Two release names are rendered per chart on purpose: one collapses through the
+`fullname` helper and one does not, so a matcher right for only one of them
+still fails here.
+
+Usage: scripts/check_job_labels.py <chart> [HELM]    (HELM defaults to `helm`)
 """
 
 from __future__ import annotations
@@ -32,24 +35,25 @@ from typing import Any
 
 import yaml
 
-CHART = "mcp-hangar-operator"
-
-# Release names to render. The first collapses through `fullname`, the second
-# does not, so a matcher pinned to either one alone fails here.
-RELEASES = ("mcp-hangar-operator", "prod")
+#: chart -> release names to render. The first collapses through `fullname`,
+#: the second does not.
+CHARTS: dict[str, tuple[str, ...]] = {
+    "mcp-hangar": ("mcp-hangar", "prod"),
+    "mcp-hangar-operator": ("mcp-hangar-operator", "prod"),
+}
 
 ENABLE = ["--set", "prometheusRule.enabled=true", "--set", "serviceMonitor.enabled=true"]
 
-# The template refuses to render without the Prometheus Operator CRDs, which is
+# The templates refuse to render without the Prometheus Operator CRDs, which is
 # correct behaviour and would otherwise make this check need a cluster.
 API_VERSIONS = ["--api-versions", "monitoring.coreos.com/v1"]
 
 _JOB = re.compile(r'job\s*=\s*"([^"]*)"')
 
 
-def _render(helm: str, release: str) -> str:
+def _render(helm: str, chart: str, release: str) -> str:
     result = subprocess.run(
-        [helm, "template", release, CHART, *ENABLE, *API_VERSIONS],
+        [helm, "template", release, chart, *ENABLE, *API_VERSIONS],
         capture_output=True,
         text=True,
         check=False,
@@ -135,26 +139,30 @@ def _self_check() -> list[str]:
 
 
 def main() -> int:
-    helm = sys.argv[1] if len(sys.argv) > 1 else "helm"
+    if len(sys.argv) < 2 or sys.argv[1] not in CHARTS:
+        print(f"usage: {sys.argv[0]} <{'|'.join(CHARTS)}> [HELM]", file=sys.stderr)
+        return 2
+    chart = sys.argv[1]
+    helm = sys.argv[2] if len(sys.argv) > 2 else "helm"
     failures: list[str] = _self_check()
 
-    for release in RELEASES:
+    for release in CHARTS[chart]:
         try:
-            docs = [d for d in yaml.safe_load_all(_render(helm, release)) if d]
+            docs = [d for d in yaml.safe_load_all(_render(helm, chart, release)) if d]
             job = _job_from_servicemonitor(docs)
             matchers = _job_matchers(docs)
         except AssertionError as exc:
-            failures.append(f"{release}: {exc}")
+            failures.append(f"{chart}/{release}: {exc}")
             continue
 
         wrong = sorted(m for m in matchers if m != job)
         if wrong:
             failures.append(
-                f"{release}: the ServiceMonitor produces job={job!r}, "
+                f"{chart}/{release}: the ServiceMonitor produces job={job!r}, "
                 f"but alerts match on {wrong} -- those alerts select nothing and cannot fire"
             )
         else:
-            print(f"ok  {release}: alerts and ServiceMonitor agree on job={job!r}")
+            print(f"ok  {chart}/{release}: alerts and ServiceMonitor agree on job={job!r}")
 
     for failure in failures:
         print(f"::error::{failure}")

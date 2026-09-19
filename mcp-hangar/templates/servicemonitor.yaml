@@ -9,6 +9,11 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  # Without this, Prometheus Operator names the job after the Service, which is
+  # `{{ include "mcp-hangar.fullname" . }}` -- release-dependent. The shipped
+  # alerts match a fixed `job="mcp-hangar"`, so they selected nothing on any
+  # install whose release was not named `mcp-hangar` (#224).
+  jobLabel: mcp-hangar.io/job
   selector:
     matchLabels:
       {{- include "mcp-hangar.selectorLabels" . | nindent 6 }}
