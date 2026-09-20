@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.15](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.14...mcp-hangar-operator-v0.12.15) (2026-09-20)
+
+
+### Fixed
+
+* **operator:** alert on reconcile errors from every controller ([#212](https://github.com/mcp-hangar/helm-charts/issues/212)) ([f3fffb6](https://github.com/mcp-hangar/helm-charts/commit/f3fffb65186569b7a151ae337391f7cbc4c1e842)), closes [#200](https://github.com/mcp-hangar/helm-charts/issues/200)
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.2 ([#220](https://github.com/mcp-hangar/helm-charts/issues/220)) ([448b00c](https://github.com/mcp-hangar/helm-charts/commit/448b00c89ca9a056a85460aa63f23d27f42ea814))
+* **operator:** match the job label the ServiceMonitor actually produces ([#225](https://github.com/mcp-hangar/helm-charts/issues/225)) ([2239846](https://github.com/mcp-hangar/helm-charts/commit/22398469ada161def1bbbfa8967701a9b8a1756b)), closes [#213](https://github.com/mcp-hangar/helm-charts/issues/213)
+
 ## [0.12.14](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.13...mcp-hangar-operator-v0.12.14) (2026-09-17)
 
 

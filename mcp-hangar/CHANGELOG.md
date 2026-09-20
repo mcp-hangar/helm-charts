@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.15.23](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.22...mcp-hangar-v0.15.23) (2026-09-20)
+
+
+### Added
+
+* **hangar:** give core's graceful shutdown room in the pod ([#209](https://github.com/mcp-hangar/helm-charts/issues/209)) ([0011694](https://github.com/mcp-hangar/helm-charts/commit/0011694e0c23883b27d75b4e4f5f84f1360e385e))
+
+
+### Fixed
+
+* **hangar:** alert on dead MCP servers, not on state 0 ([#208](https://github.com/mcp-hangar/helm-charts/issues/208)) ([34d168c](https://github.com/mcp-hangar/helm-charts/commit/34d168c7586d4260c4d3bf5888774f29d3e22cd8))
+* **hangar:** alert on health checks failing, not on an unreachable threshold ([#223](https://github.com/mcp-hangar/helm-charts/issues/223)) ([7a4e6d9](https://github.com/mcp-hangar/helm-charts/commit/7a4e6d9ac6b7e31c2897ac1c7643e8699799c607))
+* **hangar:** default the mcp-hangar chart to core image 2.21.1 ([#228](https://github.com/mcp-hangar/helm-charts/issues/228)) ([8c0997b](https://github.com/mcp-hangar/helm-charts/commit/8c0997b45a5335609ef4b5bf6de9653ef4c5c7af))
+* **hangar:** give the alerts a job label the release name cannot change ([#226](https://github.com/mcp-hangar/helm-charts/issues/226)) ([84ec945](https://github.com/mcp-hangar/helm-charts/commit/84ec945cd6fe3bf2f0e86c34935becfae15c12a4)), closes [#224](https://github.com/mcp-hangar/helm-charts/issues/224)
+
 ## [0.15.22](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.21...mcp-hangar-v0.15.22) (2026-09-17)
 
 
