@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.16](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.15...mcp-hangar-operator-v0.12.16) (2026-09-21)
+
+
+### Fixed
+
+* **operator:** ship the CRDs the operator image writes, and gate the drift ([#234](https://github.com/mcp-hangar/helm-charts/issues/234)) ([dbed0a4](https://github.com/mcp-hangar/helm-charts/commit/dbed0a467498cb2a1055fab73e064f6bfcabde62))
+
 ## [0.12.15](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.14...mcp-hangar-operator-v0.12.15) (2026-09-20)
 
 
