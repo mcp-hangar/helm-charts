@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.24](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.23...mcp-hangar-v0.15.24) (2026-09-21)
+
+
+### Added
+
+* **hangar:** make the front door, execution budgets and config reload settable ([#230](https://github.com/mcp-hangar/helm-charts/issues/230)) ([b62124c](https://github.com/mcp-hangar/helm-charts/commit/b62124cba770e32ea05b53717589d24743232db2)), closes [#216](https://github.com/mcp-hangar/helm-charts/issues/216)
+
 ## [0.15.23](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.22...mcp-hangar-v0.15.23) (2026-09-20)
 
 
