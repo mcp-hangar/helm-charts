@@ -180,6 +180,27 @@ jobs:
         if: matrix.chart == 'mcp-hangar'
         run: python3 scripts/check_shutdown_ordering.py helm
 
+      # The operator chart ships the operator's CRDs as its own templates, so a
+      # vendored copy that lags the operator image the chart deploys is a CRD
+      # that PRUNES fields the operator writes and users set -- silently, at the
+      # apiserver, with nothing in any log. scripts/vendor-operator-crds.py was
+      # written with a --check mode for this and nothing ever called it, so the
+      # copies fell behind again exactly as they did in #168.
+      #
+      # Compared against the appVersion this chart declares, not the operator's
+      # main: the chart ships the CRDs for the image it deploys. The check
+      # therefore turns red on the appVersion bump, which is when the CRDs have
+      # to move with it -- run the script without --check on that PR.
+      - name: Vendored CRDs match the operator the chart deploys
+        if: matrix.chart == 'mcp-hangar-operator' && matrix.helm == 'v3'
+        run: |
+          set -euo pipefail
+          version="$(helm show chart mcp-hangar-operator | awk '/^appVersion:/ {gsub(/"/, "", $2); print $2}')"
+          test -n "$version" || { echo "::error::mcp-hangar-operator/Chart.yaml has no appVersion"; exit 1; }
+          git clone --depth 1 --branch "v${version}" \
+            https://github.com/mcp-hangar/mcp-hangar-operator.git /tmp/operator
+          python3 scripts/vendor-operator-crds.py --operator /tmp/operator --check
+
       # tool_access, execution and config_reload had no path into config.yaml at
       # all, so running the front door meant hand-editing the rendered ConfigMap
       # and losing it on the next upgrade (#216). helm lint and kubeconform both
