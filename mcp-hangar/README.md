@@ -180,6 +180,93 @@ Leave `gracefulTimeoutSeconds` unset to keep core waiting without a bound.
 The chart then renders no grace period, so Kubernetes' default of 30 stays in
 force, and the 5 second sleep comes out of it.
 
+### The Front Door
+
+`tool_access.mode: front_door` projects a flat per-tenant tool list, instead of
+the `hangar_*` meta-API a client otherwise has to drive itself. It is the
+topology most installs want, and until now there was no value for it: you
+installed the chart, edited the rendered ConfigMap, and lost the edit on the
+next `helm upgrade` (#216).
+
+```yaml
+image:
+  tag: "2.21.1"                  # required_catalogue needs 2.21.0 or newer
+
+toolAccess:
+  mode: front_door
+  # /health/ready answers 503 until this replica has projected these, so the
+  # Service never sends traffic to a replica that would answer with a short
+  # tool list. Every id must be a server or group in mcp_servers below.
+  requiredCatalogue:
+    servers: [payments, search-pool]
+    retryForSeconds: 600
+
+execution:
+  maxConcurrency: 64
+  defaultMcpServerConcurrency: 8
+  # All three keys on every entry: core refuses a partial budget.
+  tenantLimits:
+    acme:
+      maxConcurrency: 8
+      rps: 5
+      burst: 10
+
+configReload:
+  enabled: true
+  intervalSeconds: 30
+
+mcp_servers:
+  payments:
+    mode: remote
+    endpoint: http://payments.internal:8000/mcp
+  search-pool:
+    mode: group
+    members:
+      - id: search-a
+        mode: remote
+        endpoint: http://search-a.internal:8000/mcp
+```
+
+```console
+$ helm install hangar mcp-hangar/mcp-hangar -f front-door.yaml
+$ kubectl get configmap hangar-mcp-hangar -o jsonpath='{.data.config\.yaml}' | head -6
+tool_access:
+  mode: front_door
+  required_catalogue:
+    servers:
+      - "payments"
+```
+
+A reload cannot change `toolAccess.mode` -- core refuses a file that would --
+so a topology change is a rollout, not a `configReload`.
+
+**What the render refuses,** rather than letting the pod find out: a mode that
+is not `egress` or `front_door`; a `requiredCatalogue` naming an id that this
+release's `mcp_servers` does not build; a tenant budget missing one of its
+three keys; and either key on an `image.tag` older than the core that reads it.
+
+### Settings the chart does not template
+
+`extraConfig` is merged into `config.yaml` as written:
+
+```yaml
+extraConfig:
+  headers:
+    param_validation:
+      required: true
+```
+
+It is deliberately a narrow hatch. It carries **no validation and no version
+guard**: a typo here is an `unknown_config_key` at boot -- or a refusal to
+start under `HANGAR_CONFIG_STRICT` -- rather than a failed render, and a key
+too new for your `image.tag` is ignored silently.
+
+Writing a section the chart does template (`auth`, `config_reload`,
+`coordination`, `execution`, `http`, `logging`, `mcp_servers`, `persistence`,
+`tool_access`, `truncation`) fails the render and names the value to use
+instead, so one setting never has two spellings with a precedence rule to
+remember.
+
 ### Monitoring
 
 `serviceMonitor.enabled` ships a ServiceMonitor; `prometheusRule.enabled` ships
@@ -225,6 +312,16 @@ releases in one namespace now share this `job`, and are told apart by
 | shutdown.terminationGracePeriodSeconds | int | `null` | The pod's grace period. Unset: `preStopSleepSeconds + gracefulTimeoutSeconds + 10` when a bound is set, Kubernetes' default of 30 when not. The render fails unless it is longer than `preStopSleepSeconds + gracefulTimeoutSeconds` |
 | config.unsafeNoAuth | bool | `false` | Allow binding HTTP on non-loopback without auth (demo/insecure only) |
 | auth | object | `{}` | Auth configuration rendered into config.yaml `auth:` section |
+| toolAccess.mode | string | `null` | `egress` or `front_door`, rendered as `tool_access.mode`. Unset keeps core's default (`egress`). An unrecognised value fails the render |
+| toolAccess.requiredCatalogue.servers | list | `[]` | Server or group ids a replica must have projected before `/health/ready` answers 200 (core 2.21.0+). Every id must be built by `mcp_servers`, or the render fails |
+| toolAccess.requiredCatalogue.retryForSeconds | int | `null` | Seconds readiness keeps waiting for that list before going back to the ordinary rule |
+| execution.maxConcurrency | int | `null` | Concurrent calls allowed to the gateway overall |
+| execution.defaultMcpServerConcurrency | int | `null` | Concurrent calls allowed to one MCP server |
+| execution.tenantLimits | object | `{}` | Per-tenant budgets (core 2.21.0+). Each entry needs `maxConcurrency`, `rps` and `burst`; the render fails on a partial one |
+| configReload.enabled | bool | `null` | Whether a change to `config.yaml` reloads. A reload may not change `toolAccess.mode` |
+| configReload.intervalSeconds | int | `null` | How often the file is checked |
+| configReload.useWatchdog | bool | `null` | Watch the file instead of polling it |
+| extraConfig | object | `{}` | Merged into `config.yaml` verbatim, for sections the chart does not template. No validation and no version guard; writing a templated section fails the render |
 | truncation.enabled | bool | `false` | Render a `truncation:` block into config.yaml (core 2.12.0+). Off emits nothing |
 | truncation.cacheDriver | string | `memory` | Continuation cache backend: `memory` (per-replica) or `redis` |
 | truncation.redisUrl | string | `""` | External Redis URL for the continuation cache. Required when cacheDriver is `redis` — the render fails without it |

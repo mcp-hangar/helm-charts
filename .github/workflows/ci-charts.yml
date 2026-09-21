@@ -180,6 +180,16 @@ jobs:
         if: matrix.chart == 'mcp-hangar'
         run: python3 scripts/check_shutdown_ordering.py helm
 
+      # tool_access, execution and config_reload had no path into config.yaml at
+      # all, so running the front door meant hand-editing the rendered ConfigMap
+      # and losing it on the next upgrade (#216). helm lint and kubeconform both
+      # stop at the shape of the ConfigMap -- config.yaml is one opaque string to
+      # them. This reads the sections back out of it, and checks that the shapes
+      # core would refuse at boot fail to render here instead.
+      - name: Config sections (front door, budgets and the extraConfig hatch)
+        if: matrix.chart == 'mcp-hangar'
+        run: python3 scripts/check_config_sections.py helm
+
       # An alert that matches on a `job` the ServiceMonitor never produces is
       # valid PromQL selecting nothing: it renders, it applies, promtool passes
       # it, and it cannot fire. Nothing else here can see that -- it is a
