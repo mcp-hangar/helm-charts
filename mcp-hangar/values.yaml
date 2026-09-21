@@ -233,6 +233,71 @@ mcp_servers: {}
 #     equivalents do.
 auth: {}
 
+# The tool topology, rendered into config.yaml's `tool_access:` section.
+#
+# `front_door` is the flat per-tenant tool projection: a client sees the tools
+# it is entitled to, instead of the `hangar_*` meta-API it has to drive itself.
+# `egress` is the default and what an existing install has been running.
+#
+# Nothing renders while both keys are unset, so core keeps its own default.
+toolAccess:
+  # "egress" or "front_door". An unrecognised value fails the render; core
+  # refuses one at startup rather than falling back to the permissive topology.
+  mode: null
+  # Servers a replica must have PROJECTED before /health/ready answers 200
+  # (core 2.21.0+), so the Service does not send traffic to a replica whose
+  # boot warm-up came up short and would answer with a shorter tool list.
+  #
+  # Only front_door readiness consults it; in egress it is parsed and unused.
+  # Every id must be a server or group this release's mcp_servers builds, or
+  # the render fails -- core refuses a list it could never satisfy.
+  requiredCatalogue:
+    servers: []
+    #   - payments
+    #   - search-pool
+    # Seconds readiness keeps waiting for the list before it gives up on it and
+    # goes back to the ordinary rule. Unset keeps core's default.
+    retryForSeconds: null
+
+# Execution budgets, rendered into config.yaml's `execution:` section.
+execution:
+  # Concurrent calls allowed to one MCP server, and to the gateway overall.
+  defaultMcpServerConcurrency: null
+  maxConcurrency: null
+  # Per-tenant budgets (core 2.21.0+). Every entry needs all three keys: core
+  # refuses the file otherwise, and the render refuses it here first.
+  #
+  #   tenantLimits:
+  #     acme:
+  #       maxConcurrency: 8
+  #       rps: 5
+  #       burst: 10
+  tenantLimits: {}
+
+# Reloading config.yaml in place, rendered into `config_reload:`. A reload
+# cannot change toolAccess.mode -- core refuses a file that would -- so a
+# topology change is still a rollout.
+configReload:
+  enabled: null
+  intervalSeconds: null
+  useWatchdog: null
+
+# Anything this chart does not template, merged into config.yaml as written.
+#
+# The escape hatch, and deliberately a narrow one: it carries no validation and
+# no version guard, so a typo here is an `unknown_config_key` at boot rather
+# than a failed render, and a key too new for image.tag is ignored silently.
+# Writing a section the chart DOES template -- auth, config_reload,
+# coordination, execution, http, logging, mcp_servers, persistence,
+# tool_access, truncation -- fails the render and names the value to use
+# instead, so one setting never has two spellings.
+#
+#   extraConfig:
+#     headers:
+#       param_validation:
+#         required: true
+extraConfig: {}
+
 # Batch-response truncation (core 2.12.0+), rendered into config.yaml's
 # `truncation:` section only when enabled. Off by default; disabled renders
 # nothing, so core keeps its own defaults.

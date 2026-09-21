@@ -1,4 +1,5 @@
 {{- include "mcp-hangar.validateCluster" . }}
+{{- include "mcp-hangar.config.refuseRemovedKeys" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -58,6 +59,18 @@ data:
     auth:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    {{- with include "mcp-hangar.config.toolAccess" . }}
+
+    {{ . | indent 4 | trim }}
+    {{- end }}
+    {{- with include "mcp-hangar.config.execution" . }}
+
+    {{ . | indent 4 | trim }}
+    {{- end }}
+    {{- with include "mcp-hangar.config.configReload" . }}
+
+    {{ . | indent 4 | trim }}
+    {{- end }}
     {{- $t := .Values.truncation | default dict }}
     {{- if $t.enabled }}
     {{- $driver := $t.cacheDriver | default "memory" }}
@@ -71,4 +84,8 @@ data:
       {{- with $t.redisUrl }}
       redis_url: {{ . | quote }}
       {{- end }}
+    {{- end }}
+    {{- with include "mcp-hangar.config.extra" . }}
+
+    {{ . | indent 4 | trim }}
     {{- end }}
