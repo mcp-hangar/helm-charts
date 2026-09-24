@@ -138,6 +138,24 @@ hangar:
   # Key in the secret containing the API key
   secretKey: "api-key"
 
+  # Label selector for the core gateway pods. When one of them becomes Ready,
+  # the operator re-delivers every MCPEgressPolicy's L7 policy to it, so a
+  # gateway that restarted on a memory-only backend gets its policies back.
+  # Empty means the operator's built-in default, app.kubernetes.io/name=mcp-hangar,
+  # which matches the mcp-hangar chart. A gateway deployed any other way (for
+  # example one labelled app.kubernetes.io/name=hangar-frontdoor-ha) matches
+  # nothing under the default and must set this. Any Kubernetes label selector
+  # works, including "a=b,c=d" and "tier in (gateway,frontdoor)".
+  # Rendered as --hangar-gateway-selector, which needs operator 0.17.4 or later:
+  # an older image exits on the unknown flag, so leave this empty (and
+  # gatewayWatch.enabled true) when pinning image.tag below 0.17.4.
+  gatewaySelector: ""
+
+  gatewayWatch:
+    # false turns the gateway pod watch off (renders --hangar-gateway-selector=
+    # with an empty value); gatewaySelector is then ignored. Operator >= 0.17.4.
+    enabled: true
+
 # =============================================================================
 # Resource Limits
 # =============================================================================

@@ -25,6 +25,7 @@ webhook:
 
 hangar:
   url: "http://mcp-hangar.hangar-system.svc.cluster.local:8080"
+  gatewaySelector: "app.kubernetes.io/name=mcp-hangar,app.kubernetes.io/component in (gateway,frontdoor)"
 
 serviceMonitor:
   enabled: true

@@ -65,6 +65,11 @@ spec:
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
             {{- end }}
+            {{- if not (dig "gatewayWatch" "enabled" true .Values.hangar) }}
+            - --hangar-gateway-selector=
+            {{- else if .Values.hangar.gatewaySelector }}
+            - {{ printf "--hangar-gateway-selector=%s" .Values.hangar.gatewaySelector | quote }}
+            {{- end }}
           env:
             - name: POD_NAMESPACE
               valueFrom:
