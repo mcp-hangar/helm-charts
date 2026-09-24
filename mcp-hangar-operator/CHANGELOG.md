@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.17](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.16...mcp-hangar-operator-v0.12.17) (2026-09-24)
+
+
+### Added
+
+* **operator:** expose --hangar-gateway-selector in the operator chart ([#241](https://github.com/mcp-hangar/helm-charts/issues/241)) ([9baac69](https://github.com/mcp-hangar/helm-charts/commit/9baac69ddb57248c99eb726e419ff87cd2919f2b))
+
 ## [0.12.16](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.15...mcp-hangar-operator-v0.12.16) (2026-09-21)
 
 
