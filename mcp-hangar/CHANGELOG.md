@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.29](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.28...mcp-hangar-v0.15.29) (2026-10-04)
+
+
+### Fixed
+
+* **hangar:** default the mcp-hangar chart to core image 2.24.0 ([#244](https://github.com/mcp-hangar/helm-charts/issues/244)) ([f0a9c5b](https://github.com/mcp-hangar/helm-charts/commit/f0a9c5b5bbcea30508249f8fbc658c878d47bd2c))
+
 ## [0.15.28](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.27...mcp-hangar-v0.15.28) (2026-09-24)
 
 
