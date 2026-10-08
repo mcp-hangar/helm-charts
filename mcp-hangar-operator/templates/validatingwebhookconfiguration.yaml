@@ -92,6 +92,11 @@ webhooks:
   # mcp-hangar.io/provider=<name> on CREATE when no MCPServer <name> is
   # registered in its namespace -- unregistered instances fail deployment
   # (OWASP MCP09), not just get firewalled by the phase-1 default-deny.
+  # UPDATE is gated too (operator #189, needs operator >= 0.17.5): the label
+  # is immutable once the pod is admitted, so a pod cannot be relabelled into
+  # a registered server's egress. An older operator re-runs the CREATE check
+  # on UPDATE, which denies finalizer/ownerRef patches on a labelled pod whose
+  # MCPServer is gone -- do not ship this rule to an operator before 0.17.5.
   #
   # failurePolicy is pinned to Fail (not webhook.failurePolicy): a soft policy
   # would let an unavailable operator silently admit unregistered pods,
@@ -120,6 +125,7 @@ webhooks:
           - v1
         operations:
           - CREATE
+          - UPDATE
         resources:
           - pods
         scope: Namespaced
