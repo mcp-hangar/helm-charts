@@ -103,7 +103,12 @@ spec:
                     description: Name of the ConfigMap
                     type: string
                   namespace:
-                    description: Namespace of the ConfigMap (defaults to same namespace)
+                    description: |-
+                      Namespace of the ConfigMap. Leave it empty, or set it to the source's
+                      own namespace: a ConfigMap source may only read its own namespace. A
+                      different namespace is rejected at admission and, with the webhook off,
+                      refused by the controller (Synced=False, reason CrossNamespaceRefused),
+                      which then reads and creates nothing.
                     type: string
                 required:
                 - name
@@ -1149,6 +1154,15 @@ spec:
                         items:
                           type: string
                         type: array
+                      automountServiceAccountToken:
+                        description: |-
+                          AutomountServiceAccountToken controls whether the provider pod gets a
+                          ServiceAccount token projected into it. Unset means false: an MCP server
+                          is a workload whose premise is least-privilege egress, and a bearer token
+                          for the API server on disk is a credential most of them never use (#207).
+                          Set true only when the server needs the API, usually together with a
+                          dedicated serviceAccountName.
+                        type: boolean
                       capabilities:
                         description: |-
                           Capabilities declares what resources the MCP server needs.
