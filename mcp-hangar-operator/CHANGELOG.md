@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.19](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.18...mcp-hangar-operator-v0.12.19) (2026-10-09)
+
+
+### Fixed
+
+* **operator:** grant read on apps/daemonsets for the enforcement probe ([#253](https://github.com/mcp-hangar/helm-charts/issues/253)) ([53fcd31](https://github.com/mcp-hangar/helm-charts/commit/53fcd31ac9b7fb329a69b4e680ea68593613d48e))
+
 ## [0.12.18](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.17...mcp-hangar-operator-v0.12.18) (2026-10-09)
 
 
