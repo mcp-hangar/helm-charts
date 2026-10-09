@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.18](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.17...mcp-hangar-operator-v0.12.18) (2026-10-09)
+
+
+### Fixed
+
+* **operator:** ship operator 0.17.5, its CRDs and the pod UPDATE webhook rule ([#251](https://github.com/mcp-hangar/helm-charts/issues/251)) ([5ef3f66](https://github.com/mcp-hangar/helm-charts/commit/5ef3f66c3baddd44d4f5ccd03281c19b26f72a98))
+
 ## [0.12.17](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.16...mcp-hangar-operator-v0.12.17) (2026-09-24)
 
 
