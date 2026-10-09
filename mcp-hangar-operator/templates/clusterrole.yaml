@@ -135,6 +135,21 @@ rules:
       - update
       - watch
 
+  # ==========================================================================
+  # DaemonSets (read-only, for the enforcement probe). The operator recognises
+  # a CNI that ships no CRDs (kube-router, Azure NPM, Weave Net, calico-node
+  # installed without its CRDs) by its agent DaemonSet. Without this grant the
+  # probe cannot see the agent and reports enforcement as Unknown. Read through
+  # an uncached reader, so get/list without watch is enough.
+  # ==========================================================================
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+    verbs:
+      - get
+      - list
+
   {{- if .Values.rbac.ciliumNetworkPolicies }}
   # ==========================================================================
   # CiliumNetworkPolicies (FQDN-aware egress backstop; MCPEgressPolicy flavor
