@@ -82,3 +82,20 @@ v1alpha1 -- operator 0.16.0 serves a single version and has no /convert.)
 true
 {{- end -}}
 {{- end }}
+
+{{/*
+The Secret holding the webhook serving certificate: cert-manager's, or the
+one the user brings. Fails the render when webhooks are on without
+cert-manager and either the Secret or the CA bundle is missing: the apiserver
+could not verify the webhook, and failurePolicy Fail would reject every write.
+*/}}
+{{- define "mcp-hangar-operator.webhookCertSecret" -}}
+{{- if .Values.webhook.certManager.enabled -}}
+{{ include "mcp-hangar-operator.fullname" . }}-webhook-certs
+{{- else -}}
+{{- if not (and .Values.webhook.existingSecret .Values.webhook.caBundle) -}}
+{{- fail "webhook.certManager.enabled=false needs webhook.existingSecret (a kubernetes.io/tls Secret) and webhook.caBundle (base64 PEM of its CA)" -}}
+{{- end -}}
+{{ .Values.webhook.existingSecret }}
+{{- end -}}
+{{- end }}

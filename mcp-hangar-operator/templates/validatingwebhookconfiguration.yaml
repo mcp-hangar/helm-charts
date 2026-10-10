@@ -1,4 +1,5 @@
 {{- if .Values.webhook.enabled }}
+{{- $_ := include "mcp-hangar-operator.webhookCertSecret" . }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -26,6 +27,9 @@ webhooks:
         namespace: {{ .Release.Namespace }}
         path: /validate-mcp-hangar-io-v1alpha2-mcpserver
         port: 443
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ .Values.webhook.caBundle }}
+      {{- end }}
     failurePolicy: {{ .Values.webhook.failurePolicy }}
     matchPolicy: Equivalent
     rules:
@@ -50,6 +54,9 @@ webhooks:
         namespace: {{ .Release.Namespace }}
         path: /validate-mcp-hangar-io-v1alpha2-mcpdiscoverysource
         port: 443
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ .Values.webhook.caBundle }}
+      {{- end }}
     failurePolicy: {{ .Values.webhook.failurePolicy }}
     matchPolicy: Equivalent
     rules:
@@ -91,6 +98,9 @@ webhooks:
         namespace: {{ .Release.Namespace }}
         path: /validate-pod-registration
         port: 443
+      {{- if not .Values.webhook.certManager.enabled }}
+      caBundle: {{ .Values.webhook.caBundle }}
+      {{- end }}
     failurePolicy: Fail
     matchPolicy: Equivalent
     namespaceSelector:
