@@ -127,6 +127,15 @@ operator:
   # blocked for egress-scoped servers.
   dnsEgressCIDRs: []
 
+  # Resolver pods, other than kube-system/k8s-app=kube-dns, that DNS egress may
+  # reach (--dns-egress-selectors), each "<namespace>/<key>=<value>[,...]" with
+  # at least one label. Needed on OpenShift/OKD
+  # ("openshift-dns/dns.operator.openshift.io/daemonset-dns=default") or with a
+  # custom resolver Deployment; a Service ClusterIP cannot be allowed with
+  # dnsEgressCIDRs. Unlike dnsEgressCIDRs this also reaches the Cilium
+  # backstop. Requires operator 0.17.9 or newer.
+  dnsEgressSelectors: []
+
   # How admission treats container images that are not digest-pinned
   # (--image-digest-policy): "block" rejects, "warn" adds an admission warning,
   # "off" ignores. Empty leaves the operator default ("warn"). Only takes effect

@@ -14,6 +14,9 @@ operator:
   networkPolicyEnforcement: enforced
   dnsEgressCIDRs:
     - "169.254.20.10/32"
+  dnsEgressSelectors:
+    - "openshift-dns/dns.operator.openshift.io/daemonset-dns=default"
+    - "dns/app=resolver,tier=edge"
   imageDigestPolicy: block
   gracefulShutdown:
     timeout: "10s"
