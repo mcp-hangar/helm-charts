@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.21](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.20...mcp-hangar-operator-v0.12.21) (2026-10-10)
+
+
+### Added
+
+* **operator:** expose the enforcement, DNS egress and image digest flags ([#258](https://github.com/mcp-hangar/helm-charts/issues/258)) ([c648c69](https://github.com/mcp-hangar/helm-charts/commit/c648c69fe422a975ff13768dd4a8860f0c1c43cb))
+
 ## [0.12.20](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.19...mcp-hangar-operator-v0.12.20) (2026-10-09)
 
 
