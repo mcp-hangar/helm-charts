@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.24](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.23...mcp-hangar-operator-v0.12.24) (2026-10-10)
+
+
+### Fixed
+
+* **operator:** drop the Secret, ServiceAccount and pods/status grants ([#264](https://github.com/mcp-hangar/helm-charts/issues/264)) ([5c49f9d](https://github.com/mcp-hangar/helm-charts/commit/5c49f9deccfe96e4e6ffbee8cf1dea405daa5afb))
+
 ## [0.12.23](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.22...mcp-hangar-operator-v0.12.23) (2026-10-10)
 
 
