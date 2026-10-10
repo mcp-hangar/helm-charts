@@ -18,8 +18,11 @@ CRDs are installed as chart templates (release-owned, upgradeable), gated by
 `crds.install`. `crds.keep: true` adds `helm.sh/resource-policy: keep` so an
 uninstall leaves the CRDs -- and every CR of yours they define -- in place.
 
-Webhooks are off by default; enabling them requires cert-manager
-(`webhook.certManager.enabled`).
+Webhooks are off by default. With `webhook.enabled=true` the serving
+certificate comes from cert-manager (`webhook.certManager.enabled`, default
+`true`), or, with that off, from your own `kubernetes.io/tls` Secret
+(`webhook.existingSecret`) plus the base64 PEM of its CA (`webhook.caBundle`).
+The render fails if either is missing.
 
 ## Metrics
 

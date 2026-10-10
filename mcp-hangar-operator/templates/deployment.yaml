@@ -187,7 +187,7 @@ spec:
         {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
         - name: webhook-certs
           secret:
-            secretName: {{ include "mcp-hangar-operator.fullname" . }}-webhook-certs
+            secretName: {{ include "mcp-hangar-operator.webhookCertSecret" . }}
         {{- end }}
         {{- $ca := dig "tls" "ca" dict .Values.hangar }}
         {{- if $ca.secretName }}
