@@ -104,6 +104,9 @@ spec:
             {{- else if .Values.hangar.gatewaySelector }}
             - {{ printf "--hangar-gateway-selector=%s" .Values.hangar.gatewaySelector | quote }}
             {{- end }}
+            {{- range .Values.operator.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
           env:
             - name: POD_NAMESPACE
               valueFrom:
