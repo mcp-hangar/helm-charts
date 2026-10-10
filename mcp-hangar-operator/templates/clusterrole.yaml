@@ -63,33 +63,16 @@ rules:
       - update
       - watch
 
-  - apiGroups:
-      - ""
-    resources:
-      - pods/status
-    verbs:
-      - get
-
   # ==========================================================================
-  # Secrets and ConfigMaps (read-only for env vars)
+  # ConfigMaps (read-only, for ConfigMap discovery sources). No Secrets and no
+  # ServiceAccounts: nothing in the operator reads either -- a pod's secret
+  # and service-account references are resolved by the kubelet -- and the
+  # grant was cluster-wide read on every Secret (operator #194).
   # ==========================================================================
   - apiGroups:
       - ""
     resources:
-      - secrets
       - configmaps
-    verbs:
-      - get
-      - list
-      - watch
-
-  # ==========================================================================
-  # ServiceAccounts (read-only)
-  # ==========================================================================
-  - apiGroups:
-      - ""
-    resources:
-      - serviceaccounts
     verbs:
       - get
       - list
