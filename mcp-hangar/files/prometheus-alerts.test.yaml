@@ -39,7 +39,7 @@ tests:
             exp_annotations:
               summary: "Provider notes failing health checks"
               description: "3 consecutive health check failures"
-              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+              runbook_url: "https://mcp-hangar.io/docs/runbooks/health-failures"
 
   # A server with its own, lower ceiling. The old `> 2` was silent for this one
   # no matter how broken it was; `>= 1` is not.
@@ -59,7 +59,7 @@ tests:
             exp_annotations:
               summary: "Provider strict failing health checks"
               description: "2 consecutive health check failures"
-              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+              runbook_url: "https://mcp-hangar.io/docs/runbooks/health-failures"
 
   # A passing check is the only thing that resets the gauge, so it has to be the
   # thing that clears the alert.
@@ -78,7 +78,7 @@ tests:
             exp_annotations:
               summary: "Provider notes failing health checks"
               description: "3 consecutive health check failures"
-              runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+              runbook_url: "https://mcp-hangar.io/docs/runbooks/health-failures"
       # Back to 0 and stays there: nothing firing.
       - eval_time: 12m
         alertname: MCPHangarHighConsecutiveFailures
@@ -103,7 +103,7 @@ tests:
             exp_annotations:
               summary: "Provider notes is dead"
               description: "notes is dead (state 4): Hangar gave up on it, its process crashed, its start failed, or a capability block stopped it. Health checks skip a dead server. Read its last error in GET /api/mcp_servers/notes/logs and the health block of hangar_details, fix the cause, then start it with hangar_start."
-              runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-dead"
+              runbook_url: "https://mcp-hangar.io/docs/runbooks/provider-dead"
 
   # A cold server is not a broken one. It must not page.
   - interval: 1m
