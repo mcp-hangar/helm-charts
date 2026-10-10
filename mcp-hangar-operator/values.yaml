@@ -153,6 +153,12 @@ operator:
   # with the webhook enabled.
   imageDigestPolicy: ""
 
+  # Further operator flags, appended verbatim after the ones this chart renders
+  # (e.g. ["--max-concurrent-reconciles=8"]), for a flag with no dedicated
+  # value above. A flag the chart already renders is then passed twice, and the
+  # operator keeps the last one.
+  extraArgs: []
+
   # Graceful shutdown settings
   gracefulShutdown:
     # Maximum duration the manager waits for running reconcilers on shutdown.
