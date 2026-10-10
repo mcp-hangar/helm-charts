@@ -43,6 +43,9 @@ spec:
           args:
             - --leader-elect={{ .Values.operator.leaderElection.enabled }}
             - --metrics-bind-address=:{{ .Values.operator.metrics.port }}
+            {{- if not .Values.operator.metrics.secure }}
+            - --metrics-secure=false
+            {{- end }}
             - --health-probe-bind-address=:{{ .Values.operator.health.port }}
             - --zap-log-level={{ .Values.operator.logLevel }}
             {{- if .Values.operator.leaderElection.enabled }}

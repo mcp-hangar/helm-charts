@@ -18,6 +18,12 @@ operator:
     - "openshift-dns/dns.operator.openshift.io/daemonset-dns=default"
     - "dns/app=resolver,tier=edge"
   imageDigestPolicy: block
+  metrics:
+    port: 8080
+    secure: true
+    readers:
+      - name: prometheus-k8s
+        namespace: monitoring
   gracefulShutdown:
     timeout: "10s"
     terminationGracePeriodSeconds: 15
@@ -44,6 +50,10 @@ prometheusRule:
 networkPolicy:
   enabled: true
   allowMonitoring: true
+  metricsFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
 
 podDisruptionBudget:
   enabled: true

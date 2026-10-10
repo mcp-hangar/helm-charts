@@ -1,0 +1,34 @@
+{{- if and .Values.rbac.create .Values.operator.metrics.secure }}
+# Grants get on the operator's /metrics; bind a scraper to it with
+# operator.metrics.readers (operator #193).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "mcp-hangar-operator.fullname" . }}-metrics-reader
+  labels:
+    {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
+rules:
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+{{- with .Values.operator.metrics.readers }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "mcp-hangar-operator.fullname" $ }}-metrics-reader
+  labels:
+    {{- include "mcp-hangar-operator.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "mcp-hangar-operator.fullname" $ }}-metrics-reader
+subjects:
+  {{- range . }}
+  - kind: ServiceAccount
+    name: {{ required "operator.metrics.readers[].name is required" .name }}
+    namespace: {{ required "operator.metrics.readers[].namespace is required" .namespace }}
+  {{- end }}
+{{- end }}
+{{- end }}
