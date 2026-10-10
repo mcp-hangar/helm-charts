@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.25](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.24...mcp-hangar-operator-v0.12.25) (2026-10-10)
+
+
+### Added
+
+* **operator:** expose --dns-egress-selectors in the operator chart ([#267](https://github.com/mcp-hangar/helm-charts/issues/267)) ([113e3e1](https://github.com/mcp-hangar/helm-charts/commit/113e3e1575b2b17e898e37a89b73c374bc004446))
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.9 ([#266](https://github.com/mcp-hangar/helm-charts/issues/266)) ([4363359](https://github.com/mcp-hangar/helm-charts/commit/43633593c478ff700a808f1c1e7d7cb1039d84de))
+
 ## [0.12.24](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.23...mcp-hangar-operator-v0.12.24) (2026-10-10)
 
 
