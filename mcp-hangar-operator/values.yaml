@@ -111,6 +111,28 @@ operator:
     # Duration between leader election retries
     retryPeriod: "2s"
 
+  # Whether the cluster enforces NetworkPolicy (--networkpolicy-enforcement).
+  # Empty leaves the operator default ("auto"): the operator looks for a CNI
+  # that enforces policy and, when it finds none, reports MCPServer
+  # NetworkPolicyApplied as False, an MCPEgressPolicy backstop as Unenforced and
+  # warns on enforce-egress namespaces. "enforced" asserts enforcement for a CNI
+  # the operator cannot recognise; "unenforced" asserts there is none.
+  # Requires operator 0.17.3 or newer.
+  networkPolicyEnforcement: ""
+
+  # Extra CIDRs appended to every generated DNS egress rule (--dns-egress-cidrs),
+  # in addition to the in-cluster kube-dns pods. Set this to the NodeLocal
+  # DNSCache or custom resolver address (e.g. "169.254.20.10/32") on clusters
+  # where pods do not resolve through the kube-dns pods; otherwise DNS is
+  # blocked for egress-scoped servers.
+  dnsEgressCIDRs: []
+
+  # How admission treats container images that are not digest-pinned
+  # (--image-digest-policy): "block" rejects, "warn" adds an admission warning,
+  # "off" ignores. Empty leaves the operator default ("warn"). Only takes effect
+  # with the webhook enabled.
+  imageDigestPolicy: ""
+
   # Graceful shutdown settings
   gracefulShutdown:
     # Maximum duration the manager waits for running reconcilers on shutdown.
