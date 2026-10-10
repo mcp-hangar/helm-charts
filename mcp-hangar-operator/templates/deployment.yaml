@@ -71,6 +71,9 @@ spec:
             {{- with .Values.operator.dnsEgressCIDRs }}
             - {{ printf "--dns-egress-cidrs=%s" (join "," .) | quote }}
             {{- end }}
+            {{- with .Values.operator.dnsEgressSelectors }}
+            - {{ printf "--dns-egress-selectors=%s" (join ";" .) | quote }}
+            {{- end }}
             {{- with .Values.operator.imageDigestPolicy }}
             {{- if not (has . (list "block" "warn" "off")) }}
             {{- fail (printf "operator.imageDigestPolicy must be block, warn or off, got %q" .) }}
