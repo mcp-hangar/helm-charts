@@ -198,6 +198,21 @@ hangar:
     # with an empty value); gatewaySelector is then ignored. Operator >= 0.17.4.
     enabled: true
 
+  # TLS for an https hangar.url whose certificate a private CA signed. The CA
+  # bundle (PEM) comes from a Secret or a ConfigMap in the release namespace,
+  # is mounted read-only and passed as --hangar-ca-file; it is trusted in
+  # addition to the system roots. Operator >= 0.17.11.
+  tls:
+    ca:
+      # Set one of the two.
+      secretName: ""
+      configMapName: ""
+      # Key holding the PEM bundle.
+      key: "ca.crt"
+    # Name to verify core's certificate against when hangar.url uses an address
+    # the certificate does not name (--hangar-tls-server-name). Needs a CA above.
+    serverName: ""
+
 # =============================================================================
 # Resource Limits
 # =============================================================================
