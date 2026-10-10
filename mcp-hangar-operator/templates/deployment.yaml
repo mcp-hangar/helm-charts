@@ -62,6 +62,21 @@ spec:
             {{- with .Values.operator.gracefulShutdown.timeout }}
             - --graceful-shutdown-timeout={{ . }}
             {{- end }}
+            {{- with .Values.operator.networkPolicyEnforcement }}
+            {{- if not (has . (list "auto" "enforced" "unenforced")) }}
+            {{- fail (printf "operator.networkPolicyEnforcement must be auto, enforced or unenforced, got %q" .) }}
+            {{- end }}
+            - --networkpolicy-enforcement={{ . }}
+            {{- end }}
+            {{- with .Values.operator.dnsEgressCIDRs }}
+            - {{ printf "--dns-egress-cidrs=%s" (join "," .) | quote }}
+            {{- end }}
+            {{- with .Values.operator.imageDigestPolicy }}
+            {{- if not (has . (list "block" "warn" "off")) }}
+            {{- fail (printf "operator.imageDigestPolicy must be block, warn or off, got %q" .) }}
+            {{- end }}
+            - --image-digest-policy={{ . }}
+            {{- end }}
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
             {{- end }}

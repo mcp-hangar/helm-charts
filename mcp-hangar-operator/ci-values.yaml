@@ -11,6 +11,10 @@ operator:
     leaseDuration: "15s"
     renewDeadline: "10s"
     retryPeriod: "2s"
+  networkPolicyEnforcement: enforced
+  dnsEgressCIDRs:
+    - "169.254.20.10/32"
+  imageDigestPolicy: block
   gracefulShutdown:
     timeout: "10s"
     terminationGracePeriodSeconds: 15
