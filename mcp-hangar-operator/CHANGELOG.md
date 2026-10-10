@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.27](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.26...mcp-hangar-operator-v0.12.27) (2026-10-10)
+
+
+### Added
+
+* **operator:** ship operator 0.17.11 and let it trust a private core CA ([#271](https://github.com/mcp-hangar/helm-charts/issues/271)) ([c6a9ca6](https://github.com/mcp-hangar/helm-charts/commit/c6a9ca66781ab5654bd77087ab14fa00843f00d0))
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.12 ([#273](https://github.com/mcp-hangar/helm-charts/issues/273)) ([42a287c](https://github.com/mcp-hangar/helm-charts/commit/42a287c78706436dc3a3c283aba23de483239fda))
+
 ## [0.12.26](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.25...mcp-hangar-operator-v0.12.26) (2026-10-10)
 
 
