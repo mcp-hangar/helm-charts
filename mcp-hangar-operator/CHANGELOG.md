@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.26](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.25...mcp-hangar-operator-v0.12.26) (2026-10-10)
+
+
+### Added
+
+* **operator:** ship operator 0.17.10 with authenticated HTTPS metrics ([#269](https://github.com/mcp-hangar/helm-charts/issues/269)) ([4d3216b](https://github.com/mcp-hangar/helm-charts/commit/4d3216b0f01b6c187ea2692d447e61e9809f3f27))
+
 ## [0.12.25](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.24...mcp-hangar-operator-v0.12.25) (2026-10-10)
 
 
