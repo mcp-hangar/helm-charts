@@ -91,6 +91,17 @@ operator:
   metrics:
     # Metrics bind port
     port: 8080
+    # Serve /metrics over HTTPS (self-signed, generated in memory) and admit
+    # only a bearer token the API server authenticates and authorizes for get
+    # on the /metrics non-resource URL. Operator 0.17.10 and later serve it
+    # this way by default; false renders --metrics-secure=false and restores
+    # plain, unauthenticated HTTP (operator #193).
+    secure: true
+    # ServiceAccounts allowed to scrape: each gets a ClusterRoleBinding to the
+    # chart's metrics-reader ClusterRole. With secure metrics a scraper that is
+    # not bound to it (or to another role allowing get on /metrics) gets 403.
+    # Example: [{name: prometheus-k8s, namespace: monitoring}]
+    readers: []
 
   # Health probe configuration
   health:
@@ -354,6 +365,11 @@ networkPolicy:
   enabled: true
   # Allow ingress from monitoring namespace
   allowMonitoring: true
+  # Who may reach the metrics port, as NetworkPolicy peers. Empty keeps it
+  # reachable from any pod (secure metrics still refuse an unauthorized
+  # scrape); set it to narrow the port to your monitoring namespace, e.g.
+  # [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}}]
+  metricsFrom: []
   # Additional ingress rules
   additionalIngress: []
   # Additional egress rules

@@ -16,10 +16,14 @@ spec:
       type: RuntimeDefault
   automountServiceAccountToken: false
   containers:
-    - name: wget
+    # A TCP connect, not an HTTP GET: with operator.metrics.secure the endpoint
+    # serves HTTPS and refuses a request without an authorized token, so a GET
+    # would fail on a healthy operator (operator #193). A NetworkPolicy
+    # restricted with networkPolicy.metricsFrom must admit this pod's namespace.
+    - name: probe
       image: busybox:1.37
-      command: ['wget']
-      args: ['--spider', '--timeout=5', '{{ include "mcp-hangar-operator.fullname" . }}-metrics:{{ .Values.operator.metrics.port }}']
+      command: ['nc']
+      args: ['-z', '-w', '5', '{{ include "mcp-hangar-operator.fullname" . }}-metrics', '{{ .Values.operator.metrics.port }}']
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true

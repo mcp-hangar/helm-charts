@@ -183,6 +183,26 @@ rules:
       - list
       - update
 
+  {{- if .Values.operator.metrics.secure }}
+  # ==========================================================================
+  # Metrics authentication: the operator checks a scraper's bearer token with
+  # a TokenReview and its access with a SubjectAccessReview (operator #193).
+  # Without these every scrape is refused.
+  # ==========================================================================
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+  {{- end }}
+
   {{- with .Values.rbac.additionalRules }}
   # ==========================================================================
   # Additional Custom Rules
