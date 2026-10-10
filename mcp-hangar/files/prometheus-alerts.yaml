@@ -22,7 +22,7 @@ groups:
         annotations:
           summary: "MCP Hangar not responding"
           description: "Cannot scrape metrics from MCP Hangar instance"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/not-responding"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/not-responding"
 
       # --- Error Rate ---
       - alert: MCPHangarHighErrorRate
@@ -37,7 +37,7 @@ groups:
         annotations:
           summary: "Tool call error rate > 10%"
           description: "Error rate: {{ $value | humanizePercentage }}"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/high-error-rate"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/high-error-rate"
 
       # --- Batch Critical ---
       - alert: MCPHangarBatchHighFailureRate
@@ -52,7 +52,7 @@ groups:
         annotations:
           summary: "Batch invocation failure rate > 20%"
           description: "Batch failure rate: {{ $value | humanizePercentage }}"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/batch-failures"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/batch-failures"
 
       # --- Circuit Breaker ---
       - alert: MCPHangarCircuitBreakerTripped
@@ -64,16 +64,19 @@ groups:
         annotations:
           summary: "Circuit breaker rejecting requests"
           description: "{{ $value }} requests rejected by circuit breaker in last 5m"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/circuit-breaker"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/circuit-breaker"
 
       # --- Health Check Critical ---
       # `MCPHangarProviderUnhealthy` stood here, thresholding
-      # `mcp_hangar_health_check_consecutive_failures > 5`. It could never fire.
-      # The gauge stops at `max_consecutive_failures` (core default 3): the check
-      # that reaches it flips the server to DEGRADED, and `health_check()` returns
-      # early for anything that is not READY, so no later failure is ever
-      # observed. Reaching 6 was impossible on a default install, and the rule
-      # looked correct in this file the whole time (#203).
+      # `mcp_hangar_health_check_consecutive_failures > 5`. It was the wrong
+      # signal. Only a failed health check writes the gauge, and `health_check()`
+      # returns early for anything that is not READY, so once the check that
+      # reaches `max_consecutive_failures` (core default 3) degrades the server,
+      # the series holds its last value. That value is Hangar's
+      # consecutive-failure count, which failed starts and tool calls raise as
+      # well, so it is not capped at the ceiling either: on core 2.24.0 failed
+      # restarts left it at 5 on a DEAD server. A threshold on it neither tracks
+      # "Hangar gave up" nor fires dependably (#203, #246).
       #
       # The condition it was reaching for -- Hangar has given up on this server --
       # is MCPHangarProviderDead, on `mcp_hangar_mcp_server_state == 4`, in the
@@ -88,10 +91,11 @@ groups:
       # `>= 1`, not a count of failures. `max_consecutive_failures` is per-server
       # configuration (core default 3), so this chart cannot know any given
       # server's ceiling, and one number is wrong for every server that sets its
-      # own. The gauge also cannot pass that ceiling -- see the note in the
-      # critical group -- so `> 2` fired only on an install that left the default
-      # in place, and then latched: a DEGRADED server is never probed again, so
-      # the series holds its last value until a restart makes a check pass.
+      # own -- and the gauge does not track it cleanly anyway, see the note in
+      # the critical group -- so `> 2` fired mostly on an install that left the
+      # default in place, and then latched: a DEGRADED server is never probed
+      # again, so the series holds its last value until a restart makes a check
+      # pass.
       #
       # What this says is simply "health checks are failing right now", which is
       # true at any configured ceiling and clears on the first passing check --
@@ -104,7 +108,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} failing health checks"
           description: "{{ $value }} consecutive health check failures"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/health-failures"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/health-failures"
 
       - alert: MCPHangarHealthCheckSlow
         expr: |
@@ -128,7 +132,7 @@ groups:
         annotations:
           summary: "Tool call P95 latency > 3s"
           description: "P95 latency: {{ $value | humanizeDuration }}"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/high-latency"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/high-latency"
 
       - alert: MCPHangarHighLatencyP99
         expr: |
@@ -322,7 +326,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} degraded"
           description: "Provider has been in the degraded state (3) for 5m"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/provider-unhealthy"
 
       - alert: MCPHangarProviderDead
         expr: mcp_hangar_mcp_server_state == 4
@@ -332,7 +336,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} is dead"
           description: "{{ $labels.mcp_server }} is dead (state 4): Hangar gave up on it, its process crashed, its start failed, or a capability block stopped it. Health checks skip a dead server. Read its last error in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs and the health block of hangar_details, fix the cause, then start it with hangar_start."
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-dead"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/provider-dead"
 
       # When Hangar last saw the server working: a passing health check, a
       # completed start or a successful tool call. Kept when the server goes
@@ -353,7 +357,7 @@ groups:
         annotations:
           summary: "Provider {{ $labels.mcp_server }} not seen healthy for over 15m"
           description: "No passing health check, completed start or successful tool call for {{ $value | humanizeDuration }}, and the server is not cold. Check its state: 4 is dead (MCPHangarProviderDead), 3 is degraded, 1 is stuck starting. Read its logs in GET /api/mcp_servers/{{ $labels.mcp_server }}/logs."
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/provider-unhealthy"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/provider-dead"
 
       # Needs a dead server, not just nothing up: a pool that is all cold (no
       # calls yet, or every server reaped for being idle) reads `up` 0 too.
@@ -365,7 +369,7 @@ groups:
         annotations:
           summary: "All providers are down"
           description: "No provider reports up, and at least one is dead"
-          runbook_url: "https://docs.mcp-hangar.io/runbooks/not-responding"
+          runbook_url: "https://mcp-hangar.io/docs/runbooks/not-responding"
 
       # --- Discovery ---
       - alert: MCPHangarDiscoverySourceUnhealthy
