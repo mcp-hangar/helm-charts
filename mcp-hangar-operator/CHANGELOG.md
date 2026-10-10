@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.33](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.32...mcp-hangar-operator-v0.12.33) (2026-10-10)
+
+
+### Added
+
+* **operator:** pass extra operator flags through operator.extraArgs ([#288](https://github.com/mcp-hangar/helm-charts/issues/288)) ([93567f6](https://github.com/mcp-hangar/helm-charts/commit/93567f603c8db7fed773d8caca95c8cb26e360ae))
+
+
+### Fixed
+
+* **operator:** make the webhook work without cert-manager, and run as the image's UID ([#286](https://github.com/mcp-hangar/helm-charts/issues/286)) ([cb6481c](https://github.com/mcp-hangar/helm-charts/commit/cb6481cc0e01a2cb43bfa053f02ea08c33485279))
+* **operator:** stop routing MCPServerGroup writes to a webhook ([#284](https://github.com/mcp-hangar/helm-charts/issues/284)) ([6ce724a](https://github.com/mcp-hangar/helm-charts/commit/6ce724a8797e4206d7b86a98ebcd8578ee769034))
+
 ## [0.12.32](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.31...mcp-hangar-operator-v0.12.32) (2026-10-10)
 
 
