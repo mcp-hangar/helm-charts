@@ -86,6 +86,19 @@ spec:
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
             {{- end }}
+            {{- $ca := dig "tls" "ca" dict .Values.hangar }}
+            {{- if and $ca.secretName $ca.configMapName }}
+            {{- fail "hangar.tls.ca: set secretName or configMapName, not both" }}
+            {{- end }}
+            {{- if or $ca.secretName $ca.configMapName }}
+            - --hangar-ca-file=/etc/mcp-hangar/core-ca/{{ $ca.key | default "ca.crt" }}
+            {{- end }}
+            {{- with (dig "tls" "serverName" "" .Values.hangar) }}
+            {{- if not (or $ca.secretName $ca.configMapName) }}
+            {{- fail "hangar.tls.serverName needs hangar.tls.ca.secretName or configMapName" }}
+            {{- end }}
+            - --hangar-tls-server-name={{ . }}
+            {{- end }}
             {{- if not (dig "gatewayWatch" "enabled" true .Values.hangar) }}
             - --hangar-gateway-selector=
             {{- else if .Values.hangar.gatewaySelector }}
@@ -162,6 +175,12 @@ spec:
               mountPath: /tmp/k8s-webhook-server/serving-certs
               readOnly: true
             {{- end }}
+            {{- $ca := dig "tls" "ca" dict .Values.hangar }}
+            {{- if or $ca.secretName $ca.configMapName }}
+            - name: core-ca
+              mountPath: /etc/mcp-hangar/core-ca
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
@@ -169,6 +188,16 @@ spec:
         - name: webhook-certs
           secret:
             secretName: {{ include "mcp-hangar-operator.fullname" . }}-webhook-certs
+        {{- end }}
+        {{- $ca := dig "tls" "ca" dict .Values.hangar }}
+        {{- if $ca.secretName }}
+        - name: core-ca
+          secret:
+            secretName: {{ $ca.secretName }}
+        {{- else if $ca.configMapName }}
+        - name: core-ca
+          configMap:
+            name: {{ $ca.configMapName }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
