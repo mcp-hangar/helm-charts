@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.31](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.30...mcp-hangar-v0.15.31) (2026-10-10)
+
+
+### Fixed
+
+* **hangar:** point MCPHangarProviderNotSeenHealthy at the provider-dead runbook ([#287](https://github.com/mcp-hangar/helm-charts/issues/287)) ([d5d704d](https://github.com/mcp-hangar/helm-charts/commit/d5d704d2903a9817b0b1509e414115970bfef824))
+
 ## [0.15.30](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.29...mcp-hangar-v0.15.30) (2026-10-06)
 
 
