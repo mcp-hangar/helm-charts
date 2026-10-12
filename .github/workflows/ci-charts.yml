@@ -575,13 +575,24 @@ jobs:
           fi
           echo "status.podName = $pod_name"
 
+          # Operator 0.17.21 and later run the server as a Deployment
+          # (mcp-hangar-operator#221): the pod belongs to its ReplicaSet, and
+          # the Deployment is what points back at the MCPServer. Earlier
+          # operators owned the pod directly. Accept either chain.
           owner="$(kubectl -n op get pod "$pod_name" -o jsonpath='{.metadata.ownerReferences[?(@.kind=="MCPServer")].name}' 2>/dev/null || true)"
+          if [ -z "$owner" ]; then
+            owner="$(kubectl -n op get deployment mcp-provider-ci-smoke -o jsonpath='{.metadata.ownerReferences[?(@.kind=="MCPServer")].name}' 2>/dev/null || true)"
+            via="Deployment mcp-provider-ci-smoke"
+          else
+            via="Pod $pod_name"
+          fi
           if [ "$owner" != "ci-smoke" ]; then
-            echo "::error::child Pod $pod_name has no ownerReference back to MCPServer/ci-smoke (got: '${owner:-<none>}')"
+            echo "::error::neither child Pod $pod_name nor Deployment mcp-provider-ci-smoke has an ownerReference back to MCPServer/ci-smoke (got: '${owner:-<none>}')"
             kubectl -n op get pod "$pod_name" -o yaml || true
+            kubectl -n op get deployment mcp-provider-ci-smoke -o yaml || true
             exit 1
           fi
-          echo "child Pod $pod_name has ownerReference -> MCPServer/ci-smoke (reconcile confirmed)"
+          echo "$via has ownerReference -> MCPServer/ci-smoke (reconcile confirmed)"
           echo "::endgroup::"
 
           # Upgrade + rollback (#7): deliberately NOT replicaCount>1. The
