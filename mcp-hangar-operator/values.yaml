@@ -148,10 +148,11 @@ operator:
   # backstop. Requires operator 0.17.9 or newer.
   dnsEgressSelectors: []
 
-  # How admission treats container images that are not digest-pinned
-  # (--image-digest-policy): "block" rejects, "warn" adds an admission warning,
-  # "off" ignores. Empty leaves the operator default ("warn"). Only takes effect
-  # with the webhook enabled.
+  # How admission treats container images that are not digest-pinned:
+  # "block" rejects, "warn" adds an admission warning, "off" ignores. Empty
+  # means "warn". Written to the params ConfigMap the image-digest admission
+  # policies read (admissionPolicies below), and passed as
+  # --image-digest-policy for the webhook's copy of the rule.
   imageDigestPolicy: ""
 
   # Further operator flags, appended verbatim after the ones this chart renders
@@ -266,6 +267,23 @@ topologySpreadConstraints:
     labelSelector:
       matchLabels:
         app.kubernetes.io/name: mcp-hangar-operator
+
+# =============================================================================
+# Admission Policies
+# =============================================================================
+# ValidatingAdmissionPolicies for the two MCPServer rules that read an
+# annotation (operator 0.17.22 and newer): wildcard egress needs
+# hangar.io/allow-unrestricted-egress: "true", and an image that is not
+# digest-pinned is handled per operator.imageDigestPolicy. The apiserver
+# enforces them, so they hold with webhook.enabled false. With them on, the
+# operator runs with --webhook-annotation-rules=false so the webhook does not
+# repeat them; an operator image older than 0.17.22 does not know that flag.
+admissionPolicies:
+  enabled: true
+  # Limit the policies to namespaces matching this selector, e.g.
+  # {matchLabels: {mcp-hangar.io/enforce-egress: "true"}}. Empty means every
+  # namespace, as the webhook did.
+  namespaceSelector: {}
 
 # =============================================================================
 # Admission Webhooks

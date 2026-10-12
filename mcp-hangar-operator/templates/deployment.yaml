@@ -86,6 +86,9 @@ spec:
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
             {{- end }}
+            {{- if .Values.admissionPolicies.enabled }}
+            - --webhook-annotation-rules=false
+            {{- end }}
             {{- $ca := dig "tls" "ca" dict .Values.hangar }}
             {{- if and $ca.secretName $ca.configMapName }}
             {{- fail "hangar.tls.ca: set secretName or configMapName, not both" }}

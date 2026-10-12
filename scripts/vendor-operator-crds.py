@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the operator's generated CRDs into the operator chart's templates.
+"""Vendor the operator's generated CRDs and admission policies into the chart.
 
 The chart ships the CRDs as templates rather than in `crds/`, so `crds.install`
 and `crds.keep` can govern them and they carry the chart's labels. That means a
@@ -10,6 +10,11 @@ API they describe (#168).
 Usage:
     python scripts/vendor-operator-crds.py --operator /path/to/mcp-hangar-operator
     python scripts/vendor-operator-crds.py --operator ... --check
+
+The ValidatingAdmissionPolicies (operator#219) are copied byte for byte into
+`files/admissionpolicy/`; templates/admissionpolicy.yaml reads them with
+`.Files.Get` and sets only names, labels and the params reference, so the CEL
+the chart installs is the CEL the operator tests.
 
 `--check` rewrites nothing and exits 1 if any vendored file is out of date, for
 asking "are we behind" in CI without writing.
@@ -28,6 +33,12 @@ CRDS = {
     "mcp-hangar.io_mcpdiscoverysources.yaml": "mcpdiscoverysource.yaml",
     "mcp-hangar.io_mcpegresspolicies.yaml": "mcpegresspolicy.yaml",
     "mcp-hangar.io_mcpservergroups.yaml": "mcpservergroup.yaml",
+}
+
+#: operator config/admissionpolicy basename -> chart files/admissionpolicy basename
+POLICIES = {
+    "wildcard_egress.yaml": "wildcard_egress.yaml",
+    "image_digest.yaml": "image_digest.yaml",
 }
 
 KEEP_BLOCK = [
@@ -76,12 +87,20 @@ def main() -> int:
     if not bases.is_dir():
         raise SystemExit(f"no generated CRDs at {bases}")
 
+    policies = Path(args.operator).expanduser().resolve() / "config" / "admissionpolicy"
+    policy_dest = Path(args.charts).expanduser().resolve() / CHART / "files" / "admissionpolicy"
+    if not policies.is_dir():
+        raise SystemExit(f"no admission policies at {policies}")
+
+    jobs = [(bases / s, dest / o, to_template) for s, o in CRDS.items()]
+    jobs += [(policies / s, policy_dest / o, lambda text: text) for s, o in POLICIES.items()]
+
     stale = []
-    for src_name, out_name in CRDS.items():
-        src, out = bases / src_name, dest / out_name
+    for src, out, render in jobs:
+        out_name = out.name
         if not src.is_file():
-            raise SystemExit(f"missing generated CRD: {src}")
-        want = to_template(src.read_text(encoding="utf-8"))
+            raise SystemExit(f"missing operator file: {src}")
+        want = render(src.read_text(encoding="utf-8"))
         have = out.read_text(encoding="utf-8") if out.is_file() else ""
         if want == have:
             print(f"up to date: {out_name}")
@@ -90,11 +109,12 @@ def main() -> int:
         if args.check:
             print(f"STALE: {out_name} ({len(have)} -> {len(want)} bytes)")
         else:
+            out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(want, encoding="utf-8")
             print(f"vendored: {out_name} ({len(have)} -> {len(want)} bytes)")
 
     if args.check and stale:
-        print(f"\nFAIL: {len(stale)} vendored CRD(s) behind the operator. Run without --check.")
+        print(f"\nFAIL: {len(stale)} vendored file(s) behind the operator. Run without --check.")
         return 1
     return 0
 

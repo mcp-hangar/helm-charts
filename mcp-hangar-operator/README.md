@@ -18,6 +18,14 @@ CRDs are installed as chart templates (release-owned, upgradeable), gated by
 `crds.install`. `crds.keep: true` adds `helm.sh/resource-policy: keep` so an
 uninstall leaves the CRDs -- and every CR of yours they define -- in place.
 
+The operator's two annotation-gated MCPServer rules ship as
+ValidatingAdmissionPolicies (`admissionPolicies.enabled`, default `true`, chart
+0.12.38 and operator 0.17.22 on): wildcard egress needs
+`hangar.io/allow-unrestricted-egress: "true"`, and an image that is not
+digest-pinned is handled per `operator.imageDigestPolicy` (`warn` by default,
+`block`, `off`). The apiserver enforces them, so they hold without the
+webhooks. `admissionPolicies.namespaceSelector` limits them to some namespaces.
+
 Webhooks are off by default. With `webhook.enabled=true` the serving
 certificate comes from cert-manager (`webhook.certManager.enabled`, default
 `true`), or, with that off, from your own `kubernetes.io/tls` Secret
