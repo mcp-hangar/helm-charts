@@ -1,0 +1,55 @@
+{{- /*
+The operator's ValidatingAdmissionPolicies (operator#219): wildcard egress needs
+hangar.io/allow-unrestricted-egress, and container images are held to the
+digest policy. The apiserver enforces them, so they hold with webhook.enabled
+false, the default.
+
+The policies are vendored byte for byte from the operator into
+files/admissionpolicy/ (scripts/vendor-operator-crds.py, checked in CI against
+appVersion). This template only names them after the release, labels them and
+points the digest bindings at the params ConfigMap below; the CEL is the
+operator's.
+*/}}
+{{- if .Values.admissionPolicies.enabled }}
+{{- $fullname := include "mcp-hangar-operator.fullname" . }}
+{{- $labels := include "mcp-hangar-operator.labels" . | fromYaml }}
+{{- $params := printf "%s-admission-policy-params" $fullname }}
+{{- $level := .Values.operator.imageDigestPolicy | default "warn" }}
+{{- if not (has $level (list "block" "warn" "off")) }}
+{{- fail (printf "operator.imageDigestPolicy must be block, warn or off, got %q" $level) }}
+{{- end }}
+{{- range $file := list "wildcard_egress.yaml" "image_digest.yaml" }}
+{{- range $doc := splitList "\n---\n" ($.Files.Get (printf "files/admissionpolicy/%s" $file)) }}
+{{- $o := fromYaml $doc }}
+{{- if not $o.kind }}
+{{- fail (printf "files/admissionpolicy/%s: a document has no kind" $file) }}
+{{- end }}
+{{- $name := printf "%s-%s" $fullname $o.metadata.name }}
+{{- $_ := set $o "metadata" (dict "name" $name "labels" $labels) }}
+{{- if eq $o.kind "ValidatingAdmissionPolicyBinding" }}
+{{- $_ := set $o.spec "policyName" (printf "%s-%s" $fullname $o.spec.policyName) }}
+{{- if $o.spec.paramRef }}
+{{- $_ := set $o.spec.paramRef "name" $params }}
+{{- $_ := set $o.spec.paramRef "namespace" $.Release.Namespace }}
+{{- end }}
+{{- with $.Values.admissionPolicies.namespaceSelector }}
+{{- $_ := set $o.spec "matchResources" (dict "namespaceSelector" .) }}
+{{- end }}
+{{- end }}
+---
+{{ toYaml $o }}
+{{- end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $params }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
+data:
+  # Read by the image-digest policies at admission; from
+  # operator.imageDigestPolicy.
+  imageDigestPolicy: {{ $level | quote }}
+{{- end }}

@@ -595,6 +595,37 @@ jobs:
           echo "$via has ownerReference -> MCPServer/ci-smoke (reconcile confirmed)"
           echo "::endgroup::"
 
+          # The admission policies (operator#219) are on by default and need no
+          # webhook: a wildcard egress rule without the opt-in is refused by the
+          # apiserver itself, and an unpinned image draws the digest warning.
+          # Policies reach admission through an informer, so retry the refusal
+          # until it lands rather than racing the install.
+          echo "::group::admission policies refuse wildcard egress and warn on a mutable image"
+          refused=""
+          deadline=$((SECONDS + 60))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if out="$(kubectl -n op apply --dry-run=server -f - 2>&1 <<< '{"apiVersion":"mcp-hangar.io/v1alpha2","kind":"MCPServer","metadata":{"name":"ci-wildcard"},"spec":{"mode":"remote","endpoint":"https://mcp.example.com","capabilities":{"network":{"egress":[{"host":"*"}]}}}}')"; then
+              sleep 3
+              continue
+            fi
+            refused="$out"
+            break
+          done
+          if ! grep -q 'allow-unrestricted-egress' <<< "$refused"; then
+            echo "::error::the wildcard-egress admission policy never refused an MCPServer without the opt-in"
+            echo "last output: ${out:-<none>}"
+            kubectl get validatingadmissionpolicies,validatingadmissionpolicybindings || true
+            exit 1
+          fi
+          echo "refused: $refused"
+          warned="$(kubectl -n op apply --dry-run=server -f - 2>&1 <<< '{"apiVersion":"mcp-hangar.io/v1alpha2","kind":"MCPServer","metadata":{"name":"ci-mutable"},"spec":{"mode":"container","image":"ghcr.io/mcp-hangar/does-not-exist:latest"}}')"
+          if ! grep -q 'is not digest-pinned' <<< "$warned"; then
+            echo "::error::the image-digest admission policy did not warn on a mutable tag: $warned"
+            exit 1
+          fi
+          echo "warned: $warned"
+          echo "::endgroup::"
+
           # Upgrade + rollback (#7): deliberately NOT replicaCount>1. The
           # operator's /readyz is leader-gated -- only the elected leader
           # reports ready -- so `helm upgrade --wait` at 2 replicas waits
