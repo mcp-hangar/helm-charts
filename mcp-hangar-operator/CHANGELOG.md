@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.35](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.34...mcp-hangar-operator-v0.12.35) (2026-10-12)
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.19 ([#291](https://github.com/mcp-hangar/helm-charts/issues/291)) ([7edc13a](https://github.com/mcp-hangar/helm-charts/commit/7edc13a1cb00861a6b33ab45e46da31e35c3f4b9))
+* **operator:** require Kubernetes 1.30 in the operator chart's kubeVersion ([#292](https://github.com/mcp-hangar/helm-charts/issues/292)) ([d84757f](https://github.com/mcp-hangar/helm-charts/commit/d84757fa23f3a6ba22cc4c2e059ce6408be22e90))
+
 ## [0.12.34](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.33...mcp-hangar-operator-v0.12.34) (2026-10-11)
 
 
