@@ -5,7 +5,7 @@
 | Property | Value |
 |----------|-------|
 | Chart format | Helm v3 (apiVersion: v2) |
-| Kubernetes | >= 1.25 |
+| Kubernetes | >= 1.25 (`mcp-hangar`), >= 1.30 (`mcp-hangar-operator`) |
 | Charts | `mcp-hangar` (app), `mcp-hangar-operator` (operator) |
 | Registry | `oci://ghcr.io/mcp-hangar/charts` |
 
