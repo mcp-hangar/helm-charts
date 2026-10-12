@@ -63,6 +63,23 @@ rules:
       - update
       - watch
 
+  # Deployments: from the operator release that runs container-mode servers as
+  # a Deployment (mcp-hangar-operator#221). Granted ahead of that release, so
+  # the chart works with the operator before and after it; the pod write
+  # verbs above can go once no supported operator creates pods.
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
   # ==========================================================================
   # ConfigMaps (read-only, for ConfigMap discovery sources). No Secrets and no
   # ServiceAccounts: nothing in the operator reads either -- a pod's secret
