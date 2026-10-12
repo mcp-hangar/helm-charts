@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.36](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.35...mcp-hangar-operator-v0.12.36) (2026-10-12)
+
+
+### Added
+
+* **operator:** grant the operator Deployment write ahead of container-mode Deployments ([#297](https://github.com/mcp-hangar/helm-charts/issues/297)) ([b432e35](https://github.com/mcp-hangar/helm-charts/commit/b432e35450b8d4f3976dfd82bb98833ca9bd5464))
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.20 ([#296](https://github.com/mcp-hangar/helm-charts/issues/296)) ([8a806d5](https://github.com/mcp-hangar/helm-charts/commit/8a806d55f989a23e57cc237fbf82c1f718a92674))
+
 ## [0.12.35](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.34...mcp-hangar-operator-v0.12.35) (2026-10-12)
 
 
