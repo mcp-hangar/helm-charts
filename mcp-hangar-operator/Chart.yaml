@@ -4,7 +4,7 @@ description: Kubernetes Operator for MCP-Hangar provider lifecycle management
 type: application
 version: 0.12.34
 appVersion: "0.17.19"
-kubeVersion: ">=1.25.0-0"
+kubeVersion: ">=1.30.0-0"
 
 home: https://github.com/mcp-hangar/mcp-hangar
 sources:

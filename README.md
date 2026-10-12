@@ -30,7 +30,7 @@ See [RELEASE.md](RELEASE.md) for how charts are versioned and published.
 
 ## Prerequisites
 
-- Kubernetes 1.25+
+- Kubernetes 1.25+ for `mcp-hangar`, 1.30+ for `mcp-hangar-operator`
 - Helm 3.x or 4.x (see [Helm versions](#helm-versions))
 
 ## Helm versions
