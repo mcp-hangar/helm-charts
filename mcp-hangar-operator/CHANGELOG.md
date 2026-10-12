@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.38](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.37...mcp-hangar-operator-v0.12.38) (2026-10-12)
+
+
+### Added
+
+* **operator:** install the operator's admission policies by default ([#304](https://github.com/mcp-hangar/helm-charts/issues/304)) ([c72fd53](https://github.com/mcp-hangar/helm-charts/commit/c72fd5394a6be2111dfc6b53c2c18d171ec44d68))
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.22 ([#302](https://github.com/mcp-hangar/helm-charts/issues/302)) ([83cc072](https://github.com/mcp-hangar/helm-charts/commit/83cc072c02baf26656809d38d8ffc40221ca1b4f))
+
 ## [0.12.37](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.36...mcp-hangar-operator-v0.12.37) (2026-10-12)
 
 

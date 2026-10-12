@@ -2,7 +2,7 @@ apiVersion: v2
 name: mcp-hangar-operator
 description: Kubernetes Operator for MCP-Hangar provider lifecycle management
 type: application
-version: 0.12.37
+version: 0.12.38
 appVersion: "0.17.22"
 kubeVersion: ">=1.30.0-0"
 
