@@ -25,6 +25,9 @@ ValidatingAdmissionPolicies (`admissionPolicies.enabled`, default `true`, chart
 digest-pinned is handled per `operator.imageDigestPolicy` (`warn` by default,
 `block`, `off`). The apiserver enforces them, so they hold without the
 webhooks. `admissionPolicies.namespaceSelector` limits them to some namespaces.
+Since chart 0.12.40 (operator 0.17.24) they are the only enforcement: the
+webhook dropped its copies, so `admissionPolicies.enabled=false` leaves neither
+rule in place.
 
 Webhooks are off by default. With `webhook.enabled=true` the serving
 certificate comes from cert-manager (`webhook.certManager.enabled`, default

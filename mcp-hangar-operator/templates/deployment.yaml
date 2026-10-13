@@ -77,17 +77,8 @@ spec:
             {{- with .Values.operator.dnsEgressSelectors }}
             - {{ printf "--dns-egress-selectors=%s" (join ";" .) | quote }}
             {{- end }}
-            {{- with .Values.operator.imageDigestPolicy }}
-            {{- if not (has . (list "block" "warn" "off")) }}
-            {{- fail (printf "operator.imageDigestPolicy must be block, warn or off, got %q" .) }}
-            {{- end }}
-            - --image-digest-policy={{ . }}
-            {{- end }}
             {{- if (include "mcp-hangar-operator.webhookEnabled" .) }}
             - --enable-webhooks=true
-            {{- end }}
-            {{- if .Values.admissionPolicies.enabled }}
-            - --webhook-annotation-rules=false
             {{- end }}
             {{- $ca := dig "tls" "ca" dict .Values.hangar }}
             {{- if and $ca.secretName $ca.configMapName }}
