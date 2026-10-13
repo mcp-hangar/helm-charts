@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.43](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.42...mcp-hangar-operator-v0.12.43) (2026-10-13)
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.27 ([#318](https://github.com/mcp-hangar/helm-charts/issues/318)) ([ff33839](https://github.com/mcp-hangar/helm-charts/commit/ff33839cf38e52eee88dbe1a81234b1ba91e2216))
+
 ## [0.12.42](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.41...mcp-hangar-operator-v0.12.42) (2026-10-13)
 
 
