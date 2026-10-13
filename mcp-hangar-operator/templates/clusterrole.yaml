@@ -188,7 +188,9 @@ rules:
       - patch
 
   # ==========================================================================
-  # Leader Election
+  # Leader Election, and the claims on core server names: operator 0.17.26
+  # keeps one Lease mcp-server-<name> per remote server it registers with core,
+  # and deletes it with the MCPServer (operator #164).
   # ==========================================================================
   - apiGroups:
       - coordination.k8s.io
@@ -196,6 +198,7 @@ rules:
       - leases
     verbs:
       - create
+      - delete
       - get
       - list
       - update

@@ -29,6 +29,14 @@ Since chart 0.12.40 (operator 0.17.24) they are the only enforcement: the
 webhook dropped its copies, so `admissionPolicies.enabled=false` leaves neither
 rule in place.
 
+Since operator 0.17.26 (chart 0.12.42) a `mode: remote` MCPServer whose name
+core does not hold is registered with core and removed from it with the CR.
+The operator records each registration as a Lease `mcp-server-<name>` in its own
+namespace. Core 2.27.0 or newer must trust the endpoint's network
+(`ssrf.trusted_networks`, set through the core chart's `extraConfig`). With auth
+on, the key in `hangar.apiKey` needs `mcp_servers:write` and
+`mcp_servers:lifecycle`, which `provider-admin` lacks.
+
 Webhooks are off by default. With `webhook.enabled=true` the serving
 certificate comes from cert-manager (`webhook.certManager.enabled`, default
 `true`), or, with that off, from your own `kubernetes.io/tls` Secret
