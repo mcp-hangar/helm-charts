@@ -151,8 +151,7 @@ operator:
   # How admission treats container images that are not digest-pinned:
   # "block" rejects, "warn" adds an admission warning, "off" ignores. Empty
   # means "warn". Written to the params ConfigMap the image-digest admission
-  # policies read (admissionPolicies below), and passed as
-  # --image-digest-policy for the webhook's copy of the rule.
+  # policies read (admissionPolicies below); with those off it does nothing.
   imageDigestPolicy: ""
 
   # Further operator flags, appended verbatim after the ones this chart renders
@@ -275,9 +274,9 @@ topologySpreadConstraints:
 # annotation (operator 0.17.22 and newer): wildcard egress needs
 # hangar.io/allow-unrestricted-egress: "true", and an image that is not
 # digest-pinned is handled per operator.imageDigestPolicy. The apiserver
-# enforces them, so they hold with webhook.enabled false. With them on, the
-# operator runs with --webhook-annotation-rules=false so the webhook does not
-# repeat them; an operator image older than 0.17.22 does not know that flag.
+# enforces them, so they hold with webhook.enabled false. Since operator
+# 0.17.24 the webhook no longer has its own copy, so with enabled false neither
+# rule exists, webhooks or not.
 admissionPolicies:
   enabled: true
   # Limit the policies to namespaces matching this selector, e.g.
