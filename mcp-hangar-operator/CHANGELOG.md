@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.44](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.43...mcp-hangar-operator-v0.12.44) (2026-10-14)
+
+
+### Fixed
+
+* **operator:** default the mcp-hangar-operator chart to operator image 0.17.28 ([#325](https://github.com/mcp-hangar/helm-charts/issues/325)) ([3f9fb4d](https://github.com/mcp-hangar/helm-charts/commit/3f9fb4d80266a075e7ef336970cbb47cf68a7c0f))
+* **operator:** let a node drain evict the operator under the default budget ([#322](https://github.com/mcp-hangar/helm-charts/issues/322)) ([592fdcf](https://github.com/mcp-hangar/helm-charts/commit/592fdcf088bb221bd30b49adb5dea0d6d2df6d30)), closes [#316](https://github.com/mcp-hangar/helm-charts/issues/316)
+
 ## [0.12.43](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.42...mcp-hangar-operator-v0.12.43) (2026-10-13)
 
 
