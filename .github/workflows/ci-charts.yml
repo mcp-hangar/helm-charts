@@ -219,6 +219,15 @@ jobs:
         if: matrix.chart == 'mcp-hangar-operator' && matrix.helm == 'v3'
         run: python3 scripts/check_operator_pdb.py helm
 
+      # The ClusterRole is rendered from the operator's own role, vendored with
+      # the CRDs (#315). The drift step above keeps those files equal to the
+      # operator at the appVersion; this reads the render back: every operator
+      # rule reaches the role, the chart adds none, and the Cilium, secure-metrics
+      # and leader-election switches remove exactly their rules.
+      - name: Operator ClusterRole (the operator's rules, nothing wider)
+        if: matrix.chart == 'mcp-hangar-operator' && matrix.helm == 'v3'
+        run: python3 scripts/check_operator_rbac.py helm
+
       # An alert that matches on a `job` the ServiceMonitor never produces is
       # valid PromQL selecting nothing: it renders, it applies, promtool passes
       # it, and it cannot fire. Nothing else here can see that -- it is a

@@ -1,4 +1,17 @@
 {{- if .Values.rbac.create -}}
+{{- /*
+  The rules are the operator's own, vendored from its release by
+  scripts/vendor-operator-crds.py (#315): files/rbac/role.yaml is what
+  controller-gen derives from the operator's +kubebuilder:rbac markers, and
+  files/rbac/leader_election_role.yaml is the lock it takes. A hand-kept copy
+  needed five catch-ups since July; this one moves with the appVersion.
+
+  Three things stay the chart's: the Cilium grant (inert without Cilium, but a
+  release may not want it), the metrics TokenReview/SubjectAccessReview rules
+  (only needed when operator.metrics.secure), and rbac.additionalRules.
+*/ -}}
+{{- $role := .Files.Get "files/rbac/role.yaml" | fromYaml -}}
+{{- $lock := .Files.Get "files/rbac/leader_election_role.yaml" | fromYaml -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -6,227 +19,17 @@ metadata:
   labels:
     {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
 rules:
-  # ==========================================================================
-  # MCP CRDs
-  # ==========================================================================
-  - apiGroups:
-      - mcp-hangar.io
-    resources:
-      - mcpservers
-      - mcpservergroups
-      - mcpdiscoverysources
-      - mcpegresspolicies
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-
-  - apiGroups:
-      - mcp-hangar.io
-    resources:
-      - mcpservers/status
-      - mcpservergroups/status
-      - mcpdiscoverysources/status
-      - mcpegresspolicies/status
-    verbs:
-      - get
-      - patch
-      - update
-
-  - apiGroups:
-      - mcp-hangar.io
-    resources:
-      - mcpservers/finalizers
-      - mcpservergroups/finalizers
-      - mcpdiscoverysources/finalizers
-      - mcpegresspolicies/finalizers
-    verbs:
-      - update
-
-  # ==========================================================================
-  # Pod Management
-  # ==========================================================================
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-
-  # Deployments: from the operator release that runs container-mode servers as
-  # a Deployment (mcp-hangar-operator#221). Granted ahead of that release, so
-  # the chart works with the operator before and after it; the pod write
-  # verbs above can go once no supported operator creates pods.
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-
-  # ==========================================================================
-  # ConfigMaps (read-only, for ConfigMap discovery sources). No Secrets and no
-  # ServiceAccounts: nothing in the operator reads either -- a pod's secret
-  # and service-account references are resolved by the kubelet -- and the
-  # grant was cluster-wide read on every Secret (operator #194).
-  # ==========================================================================
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    verbs:
-      - get
-      - list
-      - watch
-
-  # ==========================================================================
-  # Services (for discovery)
-  # ==========================================================================
-  - apiGroups:
-      - ""
-    resources:
-      - services
-    verbs:
-      - get
-      - list
-      - watch
-
-  # ==========================================================================
-  # Namespaces (for namespace discovery)
-  # ==========================================================================
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - get
-      - list
-      - watch
-
-  # ==========================================================================
-  # NetworkPolicies (for provider network isolation)
-  # ==========================================================================
-  - apiGroups:
-      - networking.k8s.io
-    resources:
-      - networkpolicies
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-
-  # ==========================================================================
-  # DaemonSets (read-only, for the enforcement probe). The operator recognises
-  # a CNI that ships no CRDs (kube-router, Azure NPM, Weave Net, calico-node
-  # installed without its CRDs) by its agent DaemonSet. Without this grant the
-  # probe cannot see the agent and reports enforcement as Unknown. Read through
-  # an uncached reader, so get/list without watch is enough.
-  # ==========================================================================
-  - apiGroups:
-      - apps
-    resources:
-      - daemonsets
-    verbs:
-      - get
-      - list
-
-  {{- if .Values.rbac.ciliumNetworkPolicies }}
-  # ==========================================================================
-  # CiliumNetworkPolicies (FQDN-aware egress backstop; MCPEgressPolicy flavor
-  # Cilium/Auto). Without this the operator cannot apply the Cilium backstop and
-  # the MCPEgressPolicy stays Compiled but silently un-enforced. Inert (the API
-  # group does not exist) on clusters without Cilium, so safe to grant by default.
-  # ==========================================================================
-  - apiGroups:
-      - cilium.io
-    resources:
-      - ciliumnetworkpolicies
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
+  {{- range $rule := $role.rules }}
+  {{- $cilium := has "cilium.io" $rule.apiGroups }}
+  {{- $review := or (has "authentication.k8s.io" $rule.apiGroups) (has "authorization.k8s.io" $rule.apiGroups) }}
+  {{- if and (or (not $cilium) $.Values.rbac.ciliumNetworkPolicies) (or (not $review) $.Values.operator.metrics.secure) }}
+  {{- toYaml (list $rule) | nindent 2 }}
   {{- end }}
-
-  # ==========================================================================
-  # Events (for recording events)
-  #
-  # Both API groups: the operator records through the events.k8s.io/v1
-  # recorder, while controller-runtime leader election still emits via the
-  # legacy core API. Dropping "" breaks leader election.
-  # ==========================================================================
-  - apiGroups:
-      - ""
-      - events.k8s.io
-    resources:
-      - events
-    verbs:
-      - create
-      - patch
-
-  # ==========================================================================
-  # Leader Election, and the claims on core server names: operator 0.17.26
-  # keeps one Lease mcp-server-<name> per remote server it registers with core,
-  # and deletes it with the MCPServer (operator #164).
-  # ==========================================================================
-  - apiGroups:
-      - coordination.k8s.io
-    resources:
-      - leases
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - update
-
-  {{- if .Values.operator.metrics.secure }}
-  # ==========================================================================
-  # Metrics authentication: the operator checks a scraper's bearer token with
-  # a TokenReview and its access with a SubjectAccessReview (operator #193).
-  # Without these every scrape is refused.
-  # ==========================================================================
-  - apiGroups:
-      - authentication.k8s.io
-    resources:
-      - tokenreviews
-    verbs:
-      - create
-  - apiGroups:
-      - authorization.k8s.io
-    resources:
-      - subjectaccessreviews
-    verbs:
-      - create
   {{- end }}
-
+  {{- if .Values.operator.leaderElection.enabled }}
+  {{- toYaml $lock.rules | nindent 2 }}
+  {{- end }}
   {{- with .Values.rbac.additionalRules }}
-  # ==========================================================================
-  # Additional Custom Rules
-  # ==========================================================================
   {{- toYaml . | nindent 2 }}
   {{- end }}
 {{- end }}

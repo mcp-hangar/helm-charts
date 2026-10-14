@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the operator's generated CRDs and admission policies into the chart.
+"""Vendor the operator's generated CRDs, admission policies and RBAC rules into the chart.
 
 The chart ships the CRDs as templates rather than in `crds/`, so `crds.install`
 and `crds.keep` can govern them and they carry the chart's labels. That means a
@@ -15,6 +15,13 @@ The ValidatingAdmissionPolicies (operator#219) are copied byte for byte into
 `files/admissionpolicy/`; templates/admissionpolicy.yaml reads them with
 `.Files.Get` and sets only names, labels and the params reference, so the CEL
 the chart installs is the CEL the operator tests.
+
+The RBAC rules (#315) are copied the same way into `files/rbac/`: `role.yaml` is
+what controller-gen derives from the operator's `+kubebuilder:rbac` markers and
+`leader_election_role.yaml` is the lock it takes. templates/clusterrole.yaml
+reads them with `.Files.Get`, so the permissions the chart grants are the ones
+the operator's code declares; the hand-kept copy had needed five catch-ups
+since July and a sixth was pending.
 
 `--check` rewrites nothing and exits 1 if any vendored file is out of date, for
 asking "are we behind" in CI without writing.
@@ -39,6 +46,12 @@ CRDS = {
 POLICIES = {
     "wildcard_egress.yaml": "wildcard_egress.yaml",
     "image_digest.yaml": "image_digest.yaml",
+}
+
+#: operator config/rbac basename -> chart files/rbac basename
+RBAC = {
+    "role.yaml": "role.yaml",
+    "leader_election_role.yaml": "leader_election_role.yaml",
 }
 
 KEEP_BLOCK = [
@@ -92,7 +105,13 @@ def main() -> int:
     if not policies.is_dir():
         raise SystemExit(f"no admission policies at {policies}")
 
+    rbac = Path(args.operator).expanduser().resolve() / "config" / "rbac"
+    rbac_dest = Path(args.charts).expanduser().resolve() / CHART / "files" / "rbac"
+    if not rbac.is_dir():
+        raise SystemExit(f"no RBAC manifests at {rbac}")
+
     jobs = [(bases / s, dest / o, to_template) for s, o in CRDS.items()]
+    jobs += [(rbac / s, rbac_dest / o, lambda text: text) for s, o in RBAC.items()]
     jobs += [(policies / s, policy_dest / o, lambda text: text) for s, o in POLICIES.items()]
 
     stale = []
