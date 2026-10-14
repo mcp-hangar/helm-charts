@@ -4,8 +4,30 @@ Helm chart for deploying MCP-Hangar server on Kubernetes.
 
 ## Installation
 
+The server refuses to serve HTTP on a non-loopback address unless
+authentication is configured, so an install that sets neither `auth` nor
+`config.unsafeNoAuth` stays NotReady. Choose one.
+
+Authenticated (the default path):
+
+<!-- ci:documented-install -->
 ```bash
-helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar
+helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
+  --set auth.enabled=true \
+  --set auth.allow_anonymous=false \
+  --set auth.api_key.enabled=true
+```
+
+The pod is Ready and every API call needs a key. Creating the first key
+(`mcp-hangar auth bootstrap-admin`) needs a durable store; see
+[Storage](#storage).
+
+A local trial only -- no authentication at all, for a cluster nobody else can reach:
+
+<!-- ci:documented-install -->
+```bash
+helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
+  --set config.unsafeNoAuth=true
 ```
 
 ## Configuration
@@ -14,8 +36,12 @@ See `values.yaml` for all available options.
 
 ### Basic Example
 
+<!-- ci:documented-install -->
 ```bash
 helm install mcp-hangar oci://ghcr.io/mcp-hangar/charts/mcp-hangar \
+  --set auth.enabled=true \
+  --set auth.allow_anonymous=false \
+  --set auth.api_key.enabled=true \
   --set resources.requests.memory=512Mi
 ```
 
@@ -28,6 +54,11 @@ now refuses that combination rather than rendering it -- see below.
 
 ```yaml
 # values.yaml
+auth:
+  enabled: true
+  allow_anonymous: false
+  api_key:
+    enabled: true
 mcp_servers:
   math:
     mode: remote

@@ -70,6 +70,7 @@ What the majors do differently, as observed by those CI assertions:
 
 Install the charts directly from the GHCR OCI registry.
 
+<!-- ci:documented-install -->
 ```bash
 # Add namespace
 kubectl create namespace mcp-hangar
@@ -99,13 +100,26 @@ helm install mcp-hangar-operator oci://ghcr.io/mcp-hangar/charts/mcp-hangar-oper
 
 ## Install from Source
 
+<!-- ci:documented-install -->
 ```bash
 git clone https://github.com/mcp-hangar/helm-charts.git
 cd helm-charts
 
-helm install mcp-hangar ./mcp-hangar -n mcp-hangar
+# The core server refuses to serve HTTP on a non-loopback address without
+# authentication, so an install that sets neither `auth` nor
+# `config.unsafeNoAuth` never becomes Ready. This is the authenticated default;
+# the quick demo above uses `config.unsafeNoAuth=true` instead.
+helm install mcp-hangar ./mcp-hangar -n mcp-hangar \
+  --set auth.enabled=true \
+  --set auth.allow_anonymous=false \
+  --set auth.api_key.enabled=true
 helm install mcp-hangar-operator ./mcp-hangar-operator -n mcp-hangar
 ```
+
+Every install command in this README and in `mcp-hangar/README.md` that carries
+the marker above it is run by CI on a kind cluster, with the published chart
+reference replaced by the chart in the tree, and must reach Ready
+(`scripts/documented_installs.py`).
 
 ## Chart Overview
 
