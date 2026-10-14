@@ -211,6 +211,14 @@ jobs:
         if: matrix.chart == 'mcp-hangar'
         run: python3 scripts/check_config_sections.py helm
 
+      # The operator chart defaulted to one replica and a budget of
+      # `minAvailable: 1`, which no drain can satisfy (#316). Neither
+      # `helm lint` nor kubeconform can see that: it is a relation between the
+      # budget and the replica count, and the install smoke never drains a node.
+      - name: Operator PodDisruptionBudget (a drain can take a pod)
+        if: matrix.chart == 'mcp-hangar-operator' && matrix.helm == 'v3'
+        run: python3 scripts/check_operator_pdb.py helm
+
       # An alert that matches on a `job` the ServiceMonitor never produces is
       # valid PromQL selecting nothing: it renders, it applies, promtool passes
       # it, and it cannot fire. Nothing else here can see that -- it is a

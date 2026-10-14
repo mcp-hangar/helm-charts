@@ -6,10 +6,12 @@ metadata:
   labels:
     {{- include "mcp-hangar-operator.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.podDisruptionBudget.minAvailable }}
+  {{- /* One of the two, never both: the API server refuses a budget that sets both.
+         minAvailable wins when a release sets it, so the chart's maxUnavailable
+         default does not turn that release's values into an invalid object. */}}
+  {{- if kindIs "invalid" .Values.podDisruptionBudget.minAvailable | not }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else if not (kindIs "invalid" .Values.podDisruptionBudget.maxUnavailable) }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   {{- end }}
   selector:

@@ -420,7 +420,13 @@ networkPolicy:
 podDisruptionBudget:
   # Enable PDB
   enabled: true
-  # Minimum available pods
-  minAvailable: 1
-  # Maximum unavailable pods (alternative to minAvailable)
-  # maxUnavailable: 1
+  # Maximum unavailable pods. 1 lets a node drain evict the operator, which is
+  # what a single-replica install needs: the default replicaCount is 1, and a
+  # budget of minAvailable: 1 over one pod can never be satisfied, so a drain
+  # would hang on it forever. The operator is not on any request path; a pod
+  # restarting means reconciliation pauses, not that traffic stops.
+  maxUnavailable: 1
+  # Minimum available pods (alternative to maxUnavailable; wins when set). Only
+  # sensible with replicaCount >= 2 -- and note that only the leader is Ready,
+  # so minAvailable: 1 keeps a drain from evicting the leader's node.
+  # minAvailable: 1
