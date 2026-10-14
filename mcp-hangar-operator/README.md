@@ -74,3 +74,24 @@ error naming that manager rather than silently taking the field back —
 keeps client-side apply (no such protection) until you opt in with
 `helm upgrade --server-side=true`. Details and the pinned versions: the repo
 [README](../README.md#helm-versions).
+
+### Opt-in provider ingress isolation
+
+The draft implementation tracked by [operator #327](https://github.com/mcp-hangar/mcp-hangar-operator/issues/327)
+adds a gateway-only ingress fence for container MCPServers. Use a stable operator
+image containing that feature before configuring `providerIngress`; the chart's
+current `appVersion` is not evidence that these unreleased flags are supported.
+
+Set `providerIngress.gatewayNamespace` to the actual gateway namespace and
+`hangar.gatewaySelector` to its pod labels (the operator default applies when
+empty). Set `providerIngress.enabled=true` for global opt-in, or leave it false
+and annotate individual MCPServers with `mcp-hangar.io/provider-ingress: "true"`.
+An explicit `"false"` opts a server out and removes its owned ingress policy.
+The namespace and pod selectors are combined; matching labels elsewhere do not
+grant access. Remote targets have no provider pod to fence.
+
+The first release stays opt-in. Verify gateway allow, non-gateway deny and health
+probes on the actual CNI. `ProviderIngressApplied` reports the fence separately
+from egress; other NetworkPolicies can widen ingress through additive allow
+rules. The canonical boundaries and acceptance live in the
+[ADR register](https://github.com/mcp-hangar/docs/blob/main/adr/README.md).
