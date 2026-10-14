@@ -1,0 +1,32 @@
+# Permissions to do leader election.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: mcp-hangar-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: leader-election-role
+  namespace: system
+# Leases only: controller-runtime's default lock (LeaderElectionResourceLock is
+# unset in cmd/operator/main.go). The configmaps rule was the pre-leases lock
+# and nothing used it (#194).
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
