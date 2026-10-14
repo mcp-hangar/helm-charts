@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.45](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.44...mcp-hangar-operator-v0.12.45) (2026-10-14)
+
+
+### Fixed
+
+* **operator:** vendor the operator ClusterRole from its release ([#330](https://github.com/mcp-hangar/helm-charts/issues/330)) ([34d687b](https://github.com/mcp-hangar/helm-charts/commit/34d687b30e0135b95739c759c56db1612483a83a)), closes [#315](https://github.com/mcp-hangar/helm-charts/issues/315)
+
 ## [0.12.44](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.43...mcp-hangar-operator-v0.12.44) (2026-10-14)
 
 
