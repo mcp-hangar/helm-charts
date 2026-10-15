@@ -77,10 +77,11 @@ keeps client-side apply (no such protection) until you opt in with
 
 ### Opt-in provider ingress isolation
 
-The draft implementation tracked by [operator #327](https://github.com/mcp-hangar/mcp-hangar-operator/issues/327)
-adds a gateway-only ingress fence for container MCPServers. Use a stable operator
-image containing that feature before configuring `providerIngress`; the chart's
-current `appVersion` is not evidence that these unreleased flags are supported.
+The operator provides an opt-in gateway-only ingress fence for container MCPServers.
+The chart defaults to a stable operator release that supports `providerIngress`.
+If overriding `image.tag`, choose a release containing
+[operator #348](https://github.com/mcp-hangar/mcp-hangar-operator/pull/348); an older
+image does not support these flags.
 
 Set `providerIngress.gatewayNamespace` to the actual gateway namespace and
 `hangar.gatewaySelector` to its pod labels (the operator default applies when
