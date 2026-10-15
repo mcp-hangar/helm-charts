@@ -32,3 +32,16 @@ Documentation:
   https://mcp-hangar.io
   Configuration Reference: https://mcp-hangar.io/reference/configuration/
   Provider Groups Guide:   https://mcp-hangar.io/guides/PROVIDER_GROUPS/
+
+{{- if or .Values.providerIngress.enabled .Values.providerIngress.gatewayNamespace }}
+Provider ingress isolation is configured. Use an operator image containing
+operator#327 before enabling these flags. Verify the gateway namespace and
+hangar.gatewaySelector against the actual gateway pods.
+
+  kubectl get mcpserver -o yaml
+
+ProviderIngressApplied reports the fence separately from egress. Check actual
+gateway allow/non-gateway deny traffic: other NetworkPolicies can widen ingress.
+A per-MCPServer mcp-hangar.io/provider-ingress annotation overrides the global
+setting. The first release is opt-in; there is no automatic default-on migration.
+{{- end }}

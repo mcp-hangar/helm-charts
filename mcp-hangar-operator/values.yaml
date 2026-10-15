@@ -430,3 +430,12 @@ podDisruptionBudget:
   # sensible with replicaCount >= 2 -- and note that only the leader is Ready,
   # so minAvailable: 1 keeps a drain from evicting the leader's node.
   # minAvailable: 1
+
+# Opt-in ingress fence for container MCPServers. Requires an operator image
+# containing operator#327; leave these defaults until that image is installed.
+# The peer combines this namespace with hangar.gatewaySelector (or its operator
+# default). Per-server annotation mcp-hangar.io/provider-ingress: "true"/"false"
+# overrides enabled. A namespace alone prepares per-server opt-in.
+providerIngress:
+  enabled: false
+  gatewayNamespace: ""
