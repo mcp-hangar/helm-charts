@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.47](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.46...mcp-hangar-operator-v0.12.47) (2026-10-15)
+
+
+### Added
+
+* **operator:** configure opt-in provider ingress isolation ([#335](https://github.com/mcp-hangar/helm-charts/issues/335)) ([f24c074](https://github.com/mcp-hangar/helm-charts/commit/f24c0746122410c3c3cd2aa2f50f99de43c8b3eb))
+
 ## [0.12.46](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-operator-v0.12.45...mcp-hangar-operator-v0.12.46) (2026-10-14)
 
 
