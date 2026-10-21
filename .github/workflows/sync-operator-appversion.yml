@@ -94,6 +94,23 @@ jobs:
           sed -i "s/^appVersion:.*/appVersion: \"${OP}\"/" mcp-hangar-operator/Chart.yaml
           grep -n '^appVersion:' mcp-hangar-operator/Chart.yaml
 
+      # The chart vendors the operator's CRDs, and `ci-charts` checks they match
+      # the operator the chart deploys. A release that changes a CRD failed that
+      # check on the bump PR until someone re-vendored by hand (helm-charts#349,
+      # #351), so re-vendor here from the same tag. A release that changes no
+      # CRD leaves the files as they are, and the PR stays a one-file bump.
+      - name: Re-vendor the operator CRDs at the new release
+        if: steps.v.outputs.behind == 'true'
+        env:
+          OP: ${{ steps.v.outputs.op }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "v${OP}" \
+            https://github.com/mcp-hangar/mcp-hangar-operator.git "$RUNNER_TEMP/operator"
+          python3 scripts/vendor-operator-crds.py --operator "$RUNNER_TEMP/operator"
+          python3 scripts/vendor-operator-crds.py --operator "$RUNNER_TEMP/operator" --check
+          git status --short mcp-hangar-operator/
+
       - name: Open PR
         if: steps.v.outputs.behind == 'true'
         uses: peter-evans/create-pull-request@v8
@@ -112,4 +129,4 @@ jobs:
 
             ## How tested
 
-            appVersion-only bump to an already-published stable operator release (`/releases/latest`, so never a candidate); `ci-charts` render/install applies on this PR.
+            appVersion bump to an already-published stable operator release (`/releases/latest`, so never a candidate), with the operator's CRDs re-vendored from the `v${{ steps.v.outputs.op }}` tag by `scripts/vendor-operator-crds.py` (unchanged files when the release changed no CRD); `ci-charts` render/install applies on this PR.
