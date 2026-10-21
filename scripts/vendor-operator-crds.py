@@ -46,6 +46,7 @@ CRDS = {
 POLICIES = {
     "wildcard_egress.yaml": "wildcard_egress.yaml",
     "image_digest.yaml": "image_digest.yaml",
+    "kbs_attested_image.yaml": "kbs_attested_image.yaml",
 }
 
 #: operator config/rbac basename -> chart files/rbac basename

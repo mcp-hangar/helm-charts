@@ -1,7 +1,7 @@
 {{- /*
 The operator's ValidatingAdmissionPolicies (operator#219): wildcard egress needs
-hangar.io/allow-unrestricted-egress, and container images are held to the
-digest policy. The apiserver enforces them, so they hold with webhook.enabled
+hangar.io/allow-unrestricted-egress, container images are held to the
+digest policy, and a kbs-attested server cannot opt out of it (operator#358). The apiserver enforces them, so they hold with webhook.enabled
 false, the default.
 
 The policies are vendored byte for byte from the operator into
@@ -18,7 +18,7 @@ operator's.
 {{- if not (has $level (list "block" "warn" "off")) }}
 {{- fail (printf "operator.imageDigestPolicy must be block, warn or off, got %q" $level) }}
 {{- end }}
-{{- range $file := list "wildcard_egress.yaml" "image_digest.yaml" }}
+{{- range $file := list "wildcard_egress.yaml" "image_digest.yaml" "kbs_attested_image.yaml" }}
 {{- range $doc := splitList "\n---\n" ($.Files.Get (printf "files/admissionpolicy/%s" $file)) }}
 {{- $o := fromYaml $doc }}
 {{- if not $o.kind }}
