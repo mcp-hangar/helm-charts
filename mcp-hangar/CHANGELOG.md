@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.56](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.55...mcp-hangar-v0.15.56) (2026-11-05)
+
+
+### Added
+
+* **hangar:** template ssrf.trusted_networks so the operator can register pods ([73c4fc1](https://github.com/mcp-hangar/helm-charts/commit/73c4fc179fd52a88af27aa75e11bae57dc9e87ab))
+
 ## [0.15.55](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.54...mcp-hangar-v0.15.55) (2026-11-05)
 
 
