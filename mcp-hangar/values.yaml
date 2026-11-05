@@ -282,13 +282,37 @@ configReload:
   intervalSeconds: null
   useWatchdog: null
 
+# Private networks a remote MCP server registered over the REST API may resolve
+# into (core 2.27.0+), rendered into config.yaml's `ssrf.trusted_networks`.
+# Core refuses such an endpoint on a private address unless it is inside one of
+# these networks, and checks again on every connection.
+#
+# The Kubernetes operator registers every container-mode MCP server at its pod
+# IP, so with the operator this must hold the cluster's pod CIDR, or every
+# container server is refused as untrusted. Empty by default because the chart
+# cannot know that CIDR; kind's default is shown below. Yours is the
+# controller manager's --cluster-cidr, or whatever your CNI allocates from.
+#
+# The cost: every caller allowed to register a server -- not only the operator
+# -- may then point it at any address in these networks.
+#
+# Each entry is a network in CIDR form, or a single address. The render fails
+# on an invalid IPv4 entry and on a /0; IPv6 entries are checked for shape
+# only. Core checks the rest at boot and refuses the file on it: a malformed
+# IPv6 network, host bits set, or an overlap with loopback, link-local or the
+# cloud metadata endpoint. Nothing renders while
+# the list is empty, which trusts no private network.
+ssrf:
+  trustedNetworks: []
+  #   - 10.244.0.0/16
+
 # Anything this chart does not template, merged into config.yaml as written.
 #
 # The escape hatch, and deliberately a narrow one: it carries no validation and
 # no version guard, so a typo here is an `unknown_config_key` at boot rather
 # than a failed render, and a key too new for image.tag is ignored silently.
 # Writing a section the chart DOES template -- auth, config_reload,
-# coordination, execution, http, logging, mcp_servers, persistence,
+# coordination, execution, http, logging, mcp_servers, persistence, ssrf,
 # tool_access, truncation -- fails the render and names the value to use
 # instead, so one setting never has two spellings.
 #

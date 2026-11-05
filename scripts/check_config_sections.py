@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assert the mcp-hangar chart can reach core's process-wide config sections.
 
-`tool_access`, `execution` and `config_reload` had no path into the rendered
+`tool_access`, `execution`, `config_reload` and `ssrf` had no path into the rendered
 config.yaml at all, so running the gateway in front_door mode meant editing the
 ConfigMap by hand and losing it on the next upgrade (mcp-hangar/helm-charts#216).
 
@@ -35,6 +35,14 @@ GROUP = (
     '"endpoint":"http://a:8000/mcp"}]}}'
 )
 BUDGET = 'execution.tenantLimits={"acme":{"maxConcurrency":8,"rps":5,"burst":10}}'
+
+# The first core that reads ssrf.trusted_networks, and the last that does not.
+SSRF_CORE = "image.tag=2.27.0"
+PRE_SSRF_CORE = "image.tag=2.26.0"
+POD_CIDR = 'ssrf.trustedNetworks=["10.244.0.0/16","fd00:10:244::/56","10.0.0.5"]'
+
+# Every section this script owns; a render that names none must emit none.
+SECTIONS = ("tool_access", "execution", "config_reload", "ssrf")
 
 # name -> (helm args, the config.yaml sections that must come out of it).
 RENDERS: dict[str, tuple[list[str], dict[str, object]]] = {
@@ -80,6 +88,16 @@ RENDERS: dict[str, tuple[list[str], dict[str, object]]] = {
         ["--set", "configReload.enabled=false"],
         {"config_reload": {"enabled": False}},
     ),
+    # The operator registers container servers at their pod IP; core refuses
+    # that address unless the pod CIDR is trusted.
+    "the pod CIDR trusted for operator registrations": (
+        ["--set", SSRF_CORE, "--set-json", POD_CIDR],
+        {"ssrf": {"trusted_networks": ["10.244.0.0/16", "fd00:10:244::/56", "10.0.0.5"]}},
+    ),
+    "an empty trusted network list renders nothing": (
+        ["--set", SSRF_CORE, "--set-json", "ssrf.trustedNetworks=[]"],
+        {},
+    ),
     "extraConfig reaches a section the chart does not template": (
         ["--set-json", 'extraConfig={"headers":{"param_validation":{"required":true}}}'],
         {"headers": {"param_validation": {"required": True}}},
@@ -118,6 +136,42 @@ REFUSED: dict[str, tuple[list[str], str]] = {
     "extraConfig writing a section the chart templates": (
         ["--set-json", 'extraConfig={"auth":{"enabled":true}}'],
         "which this chart templates itself",
+    ),
+    "extraConfig writing ssrf": (
+        ["--set-json", 'extraConfig={"ssrf":{"trusted_networks":["10.244.0.0/16"]}}'],
+        "which this chart templates itself",
+    ),
+    "trusted networks on a core that does not read them": (
+        ["--set", PRE_SSRF_CORE, "--set-json", POD_CIDR],
+        "needs core 2.27.0",
+    ),
+    "a trusted network that is not a network": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["pods.cluster.local"]'],
+        'entry "pods.cluster.local" is not a network',
+    ),
+    "a trusted network of everything": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["0.0.0.0/0"]'],
+        'entry "0.0.0.0/0" is not a network',
+    ),
+    "a trusted network with an octet out of range": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["300.1.1.1/16"]'],
+        'entry "300.1.1.1/16" is not a network',
+    ),
+    "a trusted network with a prefix past 32": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["10.0.0.0/33"]'],
+        'entry "10.0.0.0/33" is not a network',
+    ),
+    "a /0 spelt with a leading zero": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["10.0.0.0/00"]'],
+        'entry "10.0.0.0/00" is not a network',
+    ),
+    "an IPv6 /0": (
+        ["--set", SSRF_CORE, "--set-json", 'ssrf.trustedNetworks=["::/0"]'],
+        'entry "::/0" is not a network',
+    ),
+    "trusted networks as a string, not a list": (
+        ["--set", SSRF_CORE, "--set", "ssrf.trustedNetworks=10.244.0.0/16"],
+        "must be a list of CIDRs",
     ),
     # Removed in core 2.20.0. mcp_servers is a passthrough, so this is the one
     # removed key that can still be written through the chart.
@@ -163,7 +217,7 @@ def main() -> int:
             failures.append(f"{name}: did not render: {result.stderr.strip()}")
             continue
         config = _core_config(result.stdout)
-        absent = [section for section in ("tool_access", "execution", "config_reload") if section not in expected]
+        absent = [section for section in SECTIONS if section not in expected]
         if not expected and any(section in config for section in absent):
             failures.append(f"{name}: rendered a section nothing asked for: {sorted(config)}")
         elif not _contains(config, expected):

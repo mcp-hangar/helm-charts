@@ -276,6 +276,39 @@ is not `egress` or `front_door`; a `requiredCatalogue` naming an id that this
 release's `mcp_servers` does not build; a tenant budget missing one of its
 three keys; and either key on an `image.tag` older than the core that reads it.
 
+### Servers the operator registers
+
+Core refuses a remote MCP server registered over its REST API when the endpoint
+resolves to a private address, unless that address is inside
+`ssrf.trusted_networks` (core 2.27.0+). The Kubernetes operator registers every
+container-mode server at its pod IP, so a cluster running the operator puts its
+pod CIDR here:
+
+```yaml
+ssrf:
+  trustedNetworks:
+    - 10.244.0.0/16   # kind's default pod CIDR; use your cluster's
+```
+
+```console
+$ kubectl get configmap hangar-mcp-hangar -o jsonpath='{.data.config\.yaml}' | grep -A2 '^ssrf'
+ssrf:
+  trusted_networks:
+    - "10.244.0.0/16"
+```
+
+The list is empty by default, which trusts no private network: the chart cannot
+know the pod CIDR. Without it every container server the operator registers is
+refused as untrusted. The trust is not scoped to the operator: every caller
+allowed to register a server may then point it at any address in these
+networks.
+
+Each entry is a network in CIDR form, or a single address. The render fails on
+an invalid IPv4 entry, on a `/0`, and on any entry with an `image.tag` older
+than 2.27.0; IPv6 entries are checked for shape only. Core refuses the rest at
+boot, naming the entry: a malformed IPv6 network, host bits set, or an overlap
+with loopback, link-local or the cloud metadata endpoint.
+
 ### Settings the chart does not template
 
 `extraConfig` is merged into `config.yaml` as written:
@@ -294,7 +327,7 @@ too new for your `image.tag` is ignored silently.
 
 Writing a section the chart does template (`auth`, `config_reload`,
 `coordination`, `execution`, `http`, `logging`, `mcp_servers`, `persistence`,
-`tool_access`, `truncation`) fails the render and names the value to use
+`ssrf`, `tool_access`, `truncation`) fails the render and names the value to use
 instead, so one setting never has two spellings with a precedence rule to
 remember.
 
@@ -352,6 +385,7 @@ releases in one namespace now share this `job`, and are told apart by
 | configReload.enabled | bool | `null` | Whether a change to `config.yaml` reloads. A reload may not change `toolAccess.mode` |
 | configReload.intervalSeconds | int | `null` | How often the file is checked |
 | configReload.useWatchdog | bool | `null` | Watch the file instead of polling it |
+| ssrf.trustedNetworks | list | `[]` | Private networks a server registered over the REST API may resolve into, rendered as `ssrf.trusted_networks` (core 2.27.0+). Set the pod CIDR when the operator registers container servers. Empty renders nothing; an invalid IPv4 entry or a `/0` fails the render, IPv6 is shape-checked only |
 | extraConfig | object | `{}` | Merged into `config.yaml` verbatim, for sections the chart does not template. No validation and no version guard; writing a templated section fails the render |
 | truncation.enabled | bool | `false` | Render a `truncation:` block into config.yaml (core 2.12.0+). Off emits nothing |
 | truncation.cacheDriver | string | `memory` | Continuation cache backend: `memory` (per-replica) or `redis` |

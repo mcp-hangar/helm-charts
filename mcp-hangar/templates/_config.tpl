@@ -1,6 +1,6 @@
 {{/*
 The process-wide config.yaml sections: tool_access, execution, config_reload,
-and the escape hatch for everything else (mcp-hangar/helm-charts#216).
+ssrf, and the escape hatch for everything else (mcp-hangar/helm-charts#216).
 
 These were unreachable through the chart. The ConfigMap rendered a fixed list
 of sections, and none of these was on it, so running the gateway in front_door
@@ -141,11 +141,44 @@ config_reload:
 {{- end -}}
 {{- end -}}
 
+{{/* The `ssrf:` section, or nothing while ssrf.trustedNetworks is empty.
+
+     The render checks what a regex can: a valid IPv4 address with an optional
+     prefix of 0-32, an IPv6 entry by shape only (hex digits and colons, an
+     optional prefix), and no /0. A bare address is a /32 or /128 to core.
+     Core does the rest at boot and refuses the file on it -- a malformed IPv6
+     network, host bits set, or an overlap with loopback, link-local or the
+     cloud metadata endpoint -- naming the entry. */}}
+{{- define "mcp-hangar.config.ssrf" -}}
+{{- $s := .Values.ssrf | default dict -}}
+{{- $networks := $s.trustedNetworks | default list -}}
+{{- if not (kindIs "slice" $networks) -}}
+  {{- fail (printf "\n\nssrf.trustedNetworks must be a list of CIDRs, got %s.\n" (kindOf $networks)) -}}
+{{- end -}}
+{{- if $networks -}}
+  {{- include "mcp-hangar.config.requireCore" (list . "ssrf.trustedNetworks" "2.27.0") -}}
+  {{- range $network := $networks -}}
+    {{- $n := toString $network -}}
+    {{- $octet := "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])" -}}
+    {{- $v4 := regexMatch (printf "^%s(\\.%s){3}(/(3[0-2]|[12]?[0-9]))?$" $octet $octet) $n -}}
+    {{- $v6 := and (contains ":" $n) (regexMatch "^[0-9A-Fa-f:.]+(/[0-9]{1,3})?$" $n) -}}
+    {{- if or (not (kindIs "string" $network)) (not (or $v4 $v6)) (regexMatch "/0+$" $n) -}}
+      {{- fail (printf "\n\nssrf.trustedNetworks entry %q is not a network.\n\nEach entry must be an IPv4 or IPv6 network in CIDR form, such as\n\"10.244.0.0/16\", or a single address, and not a /0. Core refuses the whole file on a bad entry,\nso this would be a gateway that does not start.\n" $n) -}}
+    {{- end -}}
+  {{- end -}}
+ssrf:
+  trusted_networks:
+    {{- range $networks }}
+    - {{ . | quote }}
+    {{- end }}
+{{- end -}}
+{{- end -}}
+
 {{/* Sections the chart templates. extraConfig may not write any of them: the
      chart's copy has the validation and the version guard, and two spellings
      of one setting would need a precedence rule nobody would remember. */}}
 {{- define "mcp-hangar.config.templatedSections" -}}
-auth,config_reload,coordination,execution,http,logging,mcp_servers,persistence,tool_access,truncation
+auth,config_reload,coordination,execution,http,logging,mcp_servers,persistence,ssrf,tool_access,truncation
 {{- end -}}
 
 {{/* `extraConfig`, checked and rendered. */}}

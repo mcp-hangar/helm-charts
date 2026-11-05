@@ -71,6 +71,10 @@ data:
 
     {{ . | indent 4 | trim }}
     {{- end }}
+    {{- with include "mcp-hangar.config.ssrf" . }}
+
+    {{ . | indent 4 | trim }}
+    {{- end }}
     {{- $t := .Values.truncation | default dict }}
     {{- if $t.enabled }}
     {{- $driver := $t.cacheDriver | default "memory" }}
