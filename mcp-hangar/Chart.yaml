@@ -1,6 +1,6 @@
 apiVersion: v2
 name: mcp-hangar
-description: Production-grade infrastructure for Model Context Protocol
+description: MCP gateway with tool pinning and approvals
 type: application
 kubeVersion: ">=1.25.0-0"
 appVersion: "2.36.1"
