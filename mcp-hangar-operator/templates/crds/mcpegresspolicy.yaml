@@ -352,6 +352,7 @@ spec:
                 - Disabled
                 - Pending
                 - NotApplicable
+                - Partial
                 type: string
               conditions:
                 description: |-
