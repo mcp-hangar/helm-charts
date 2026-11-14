@@ -1,5 +1,6 @@
 {{- include "mcp-hangar.validateCluster" . }}
 {{- include "mcp-hangar.config.refuseRemovedKeys" . }}
+{{- include "mcp-hangar.config.flatProjection" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
