@@ -221,7 +221,7 @@ next `helm upgrade` (#216).
 
 ```yaml
 image:
-  tag: "2.21.1"                  # required_catalogue needs 2.21.0 or newer
+  tag: "2.37.0"                  # tool_projection.flat needs 2.37.0 or newer
 
 toolAccess:
   mode: front_door
@@ -247,11 +247,18 @@ configReload:
   intervalSeconds: 30
 
 mcp_servers:
+  # From core 2.37.0 every server and group on a front door chooses the tools
+  # it projects under their own names; one that does not choose refuses to
+  # start. There is no `flat: all`; `flat: []` projects none.
   payments:
     mode: remote
     endpoint: http://payments.internal:8000/mcp
+    tool_projection:
+      flat: [charge, refund]
   search-pool:
     mode: group
+    tool_projection:
+      flat: [search]
     members:
       - id: search-a
         mode: remote
@@ -274,7 +281,9 @@ so a topology change is a rollout, not a `configReload`.
 **What the render refuses,** rather than letting the pod find out: a mode that
 is not `egress` or `front_door`; a `requiredCatalogue` naming an id that this
 release's `mcp_servers` does not build; a tenant budget missing one of its
-three keys; and either key on an `image.tag` older than the core that reads it.
+three keys; on core 2.37.0 or newer, a front-door server or group with no
+`tool_projection.flat`; `tool_projection.flat` on an egress gateway; and any of
+these keys on an `image.tag` older than the core that reads it.
 
 ### Servers the operator registers
 
