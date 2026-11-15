@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.63](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.62...mcp-hangar-v0.15.63) (2026-11-15)
+
+
+### Fixed
+
+* **hangar:** default the mcp-hangar chart to core image 2.37.0 ([#409](https://github.com/mcp-hangar/helm-charts/issues/409)) ([3b3e3db](https://github.com/mcp-hangar/helm-charts/commit/3b3e3db2667b1ed5a229e69c31a7c8fab4946462))
+* **hangar:** refuse a front door whose servers do not choose tool_projection.flat ([#411](https://github.com/mcp-hangar/helm-charts/issues/411)) ([8dfbe4a](https://github.com/mcp-hangar/helm-charts/commit/8dfbe4afbfe1d1eaaad82329bb208c19f97f1b7e)), closes [#410](https://github.com/mcp-hangar/helm-charts/issues/410)
+
 ## [0.15.62](https://github.com/mcp-hangar/helm-charts/compare/mcp-hangar-v0.15.61...mcp-hangar-v0.15.62) (2026-11-14)
 
 
