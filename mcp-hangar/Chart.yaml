@@ -4,7 +4,7 @@ description: MCP gateway with tool pinning and approvals
 type: application
 kubeVersion: ">=1.25.0-0"
 appVersion: "2.37.1"
-version: 0.15.63
+version: 0.15.64
 home: https://mcp-hangar.io
 sources:
   - https://github.com/mcp-hangar/mcp-hangar
