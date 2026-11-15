@@ -13,7 +13,7 @@ This repository contains official Helm charts for MCP Hangar.
 
 ## Charts
 
-- **mcp-hangar** — MCP Hangar core, the MCP gateway with tool pinning and approvals
+- **mcp-hangar** — MCP Hangar core, the policy enforcement plane for MCP with tool pinning and approvals
 - **mcp-hangar-operator** — Kubernetes operator for MCP Hangar, managing MCP server lifecycle and egress policy
 
 Both charts are also listed on
