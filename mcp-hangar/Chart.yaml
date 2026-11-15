@@ -1,6 +1,6 @@
 apiVersion: v2
 name: mcp-hangar
-description: MCP gateway with tool pinning and approvals
+description: Policy enforcement plane for MCP with tool pinning and approvals
 type: application
 kubeVersion: ">=1.25.0-0"
 appVersion: "2.37.1"
