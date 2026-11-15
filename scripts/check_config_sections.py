@@ -34,6 +34,14 @@ GROUP = (
     'mcp_servers={"pool":{"mode":"group","members":[{"id":"inline-a","mode":"remote",'
     '"endpoint":"http://a:8000/mcp"}]}}'
 )
+# The first core that refuses a front door whose servers do not choose
+# tool_projection.flat (#1372), and the last that ignores the key.
+FLAT_CORE = "image.tag=2.37.0"
+PRE_FLAT_CORE = "image.tag=2.36.8"
+FLAT_SERVERS = (
+    'mcp_servers={"math":{"mode":"remote","endpoint":"http://m:8000/mcp",'
+    '"tool_projection":{"flat":["add"]}}}'
+)
 BUDGET = 'execution.tenantLimits={"acme":{"maxConcurrency":8,"rps":5,"burst":10}}'
 
 # The first core that reads ssrf.trusted_networks, and the last that does not.
@@ -102,6 +110,16 @@ RENDERS: dict[str, tuple[list[str], dict[str, object]]] = {
         ["--set-json", 'extraConfig={"headers":{"param_validation":{"required":true}}}'],
         {"headers": {"param_validation": {"required": True}}},
     ),
+    # From 2.37.0 a front door serves only the tools each server names.
+    "a front door whose servers choose their flat tools": (
+        ["--set", FLAT_CORE, "--set", "toolAccess.mode=front_door", "--set-json", FLAT_SERVERS],
+        {"tool_access": {"mode": "front_door"}},
+    ),
+    # An older core projects every tool and never reads the key.
+    "a front door without flat on a core that predates it": (
+        ["--set", PRE_FLAT_CORE, "--set", "toolAccess.mode=front_door", "--set-json", SERVERS],
+        {"tool_access": {"mode": "front_door"}},
+    ),
     "the front door end to end": (
         ["--set", NEW_CORE, "--set", "toolAccess.mode=front_door", "--set-json", SERVERS,
          "--set-json", 'toolAccess.requiredCatalogue.servers=["math"]', "--set-json", BUDGET,
@@ -116,6 +134,18 @@ RENDERS: dict[str, tuple[list[str], dict[str, object]]] = {
 
 # name -> (helm args, a phrase the failed render must say).
 REFUSED: dict[str, tuple[list[str], str]] = {
+    "a front door whose server has not chosen its flat tools": (
+        ["--set", FLAT_CORE, "--set", "toolAccess.mode=front_door", "--set-json", SERVERS],
+        "has not chosen which of its\ntools are projected",
+    ),
+    "flat on an egress gateway": (
+        ["--set", FLAT_CORE, "--set-json", FLAT_SERVERS],
+        "and toolAccess.mode is not front_door",
+    ),
+    "flat on a core that does not read it": (
+        ["--set", PRE_FLAT_CORE, "--set", "toolAccess.mode=front_door", "--set-json", FLAT_SERVERS],
+        "needs core 2.37.0",
+    ),
     "a misspelt mode": (["--set", "toolAccess.mode=front-door"], 'it must be "egress" or "front_door"'),
     "a required catalogue on a core that does not read it": (
         ["--set", OLD_CORE, "--set-json", SERVERS, "--set-json", 'toolAccess.requiredCatalogue.servers=["math"]'],

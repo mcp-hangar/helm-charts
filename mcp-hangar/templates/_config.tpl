@@ -214,3 +214,32 @@ auth,config_reload,coordination,execution,http,logging,mcp_servers,persistence,s
   {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/* `tool_projection.flat` against the mode (core 2.37.0, #1372). On a front
+     door every top-level `mcp_servers` entry chooses which of its tools are
+     projected under their own names, and core refuses to start when one has
+     not chosen. Under egress the key is refused as configuration that would
+     do nothing (ADR-027). `mcp_servers` is a passthrough, so both are checked
+     here, where a refusal is a failed render instead of a crash-looping pod.
+     The missing-key check applies from 2.37.0 only: an older core projects
+     every tool and does not read the key. */}}
+{{- define "mcp-hangar.config.flatProjection" -}}
+{{- $ta := .Values.toolAccess | default dict -}}
+{{- $frontDoor := eq (toString (default "" $ta.mode)) "front_door" -}}
+{{- $tag := include "mcp-hangar.config.coreTag" . -}}
+{{- $flatCore := and (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+" $tag) (semverCompare ">= 2.37.0-0" $tag) -}}
+{{- range $id, $spec := .Values.mcp_servers -}}
+  {{- if kindIs "map" $spec -}}
+    {{- $block := $spec.tool_projection -}}
+    {{- $declared := and (kindIs "map" $block) (hasKey $block "flat") -}}
+    {{- if $declared -}}
+      {{- include "mcp-hangar.config.requireCore" (list $ (printf "mcp_servers.%s.tool_projection.flat" $id) "2.37.0") -}}
+      {{- if not $frontDoor -}}
+        {{- fail (printf "\n\nmcp_servers.%s sets tool_projection.flat, and toolAccess.mode is not front_door.\n\nflat chooses the tools a front door projects under their own names, and\negress projects none, so core refuses the key as configuration that would do\nnothing (ADR-027). Remove it, or set toolAccess.mode=front_door.\n" $id) -}}
+      {{- end -}}
+    {{- else if and $frontDoor $flatCore -}}
+      {{- fail (printf "\n\nmcp_servers.%s is served on a front door and has not chosen which of its\ntools are projected under their own names.\n\nFrom core 2.37.0 that surface must be chosen explicitly, and core refuses to\nstart until it is: add tool_projection.flat to mcp_servers.%s with the tools\nto project, or flat: [] for none. There is no `flat: all`; the core upgrade\nnotes for 2.37.0 show how to list the tools served today.\n" $id $id) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
