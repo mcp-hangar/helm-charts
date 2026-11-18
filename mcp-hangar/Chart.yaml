@@ -4,7 +4,7 @@ description: Policy enforcement plane for MCP with tool pinning and approvals
 type: application
 kubeVersion: ">=1.25.0-0"
 appVersion: "2.39.1"
-version: 0.15.66
+version: 0.15.67
 home: https://mcp-hangar.io
 sources:
   - https://github.com/mcp-hangar/mcp-hangar
